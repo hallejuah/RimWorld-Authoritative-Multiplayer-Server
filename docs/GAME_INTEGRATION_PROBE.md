@@ -56,3 +56,8 @@ This remains a manual integration plan and an optional library hook. An optional
 ## Easier opt-in route prepared (NOT executed)
 
 The separately compiled Source/AuthoritativeProbeMod now exposes Start/Stop actions and random per-run local credential through RimWorld's Mod settings. Source/AuthoritativeProbeClient can request a read-only snapshot or one movement on localhost. No manual C# injected initialization should be required once the staged mod loads correctly. Packaging and runtime dependencies are still subject to actual game validation. See docs/EXPERIMENTAL_PROBE.md for the future test procedure.
+
+
+## New server-side v2 reader (NOT installed or activated)
+
+The read-only `VerseSingleMapBootstrapSource` and `RimWorldSingleMapDriver.CaptureBootstrapV2` compile against RimWorld 1.6 references and can read real map Terrain/Roof/Fog and spawned Things if called on the Unity simulation thread. They are **not wired to the optional probe UI or the v1 TCP transport** because there is no verified mod/Def content manifest generator and no stable PlanetTile mapping. Do not substitute fabricated hashes or call the extractor from a network thread. See docs/VERSE_V2_EXTRACTION.md.

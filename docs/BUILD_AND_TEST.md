@@ -92,3 +92,13 @@ The opt-in mod settings UI refuses activation if the original Multiplayer mod as
 New in Source/AuthoritativeCore: WorldBootstrapV2 / WorldBootstrapValidator / WorldBootstrapCodec / ClientWorldBootstrapReplica, with seven focused validation tests registered in the existing console test runner. The tests confirm deterministic canonical serialization, map layer limits and palette references, pawn/entity identity and references, RimWorld/mod/Def compatibility checks, immutable client admission and invalid/oversize rejection.
 
 This is a source-level DTO milestone, not a real Verse map capture or a playable world bootstrap. The existing socket loopback protocol still transmits v1 pawn positions only. Detailed contract and next steps: docs/WORLD_BOOTSTRAP_V2.md.
+
+
+## Sixth iteration — read-only Verse extraction build
+
+```bash
+dotnet build Source/AuthoritativeRimWorldBridge/AuthoritativeRimWorldBridge.csproj -c Release
+dotnet run --project Source/AuthoritativeCore.Tests/AuthoritativeCore.Tests.csproj -c Release
+```
+
+The bridge now contains a Verse-backed `IWorldBootstrapMapSource`. Its real map extraction has **only been reference-compiled**, not game-run. Four new automated fake-source tests validate v2 palette packing, roof and fog, map/entity ordering, bounds, and manifest gating. See docs/VERSE_V2_EXTRACTION.md.

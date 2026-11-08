@@ -63,3 +63,8 @@ Source/AuthoritativeProbeMod is now a standalone net48 Verse.Mod using mod-setti
 A new `WorldBootstrapV2` data model describes packed map terrain, roof and fog, minimal pawn/thing presentation and a version-sensitive content manifest that can block incompatible clients before world install. Its codec enforces size and shape checks, and client admission is fail-closed and atomic. It is deliberately isolated from the v1 movement stream to avoid silently breaking existing protocol consumers.
 
 This is an original implementation derived from interoperability requirements, not copied from Amity or another mod. The server has no trustworthy Verse-based v2 map extractor or mod/Def fingerprint collector yet, and it has not been runtime-tested in a licensed game. See docs/WORLD_BOOTSTRAP_V2.md.
+
+
+## Sixth iteration: real Verse map extraction, not game-tested
+
+The v2 capture builder and reference-compiled Verse adapter read a single loaded map's terrain/roof/fog and minimal spawned Thing/Pawn metadata on the owner thread, then produce strictly validated v2 DTOs. No game actions are executed by this reader. It is an explicitly invoked utility, not a public TCP endpoint: content fingerprinting, stable world UUID, 1.6 PlanetTile mapping, client presentation and actual game-runtime integration are required before it can be used safely. See docs/VERSE_V2_EXTRACTION.md.

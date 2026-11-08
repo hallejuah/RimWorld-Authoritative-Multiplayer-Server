@@ -70,3 +70,8 @@ This is source and packaging infrastructure ONLY: no licensed Unity process has 
 WorldBootstrapV2 adds presentation-level map layers and entities, world UUID and content fingerprints with strict bounds/duplicate-ID validation and atomic client admission. It is NOT a full RimWorld save and intentionally does not represent health trackers, inventory, gear, ThingComps, Def relationships or world events. No game runtime has populated these records.
 
 The current loopback TCP transport still uses v1; a joining client cannot download v2 map data yet. Mod content and Def catalog hashes must ultimately be calculated from real active RimWorld mods/defs and cannot safely be filled with fabricated or client-provided hashes. Its SHA-256 snapshot digest detects corruption only, not malicious tampering or spoofed server identity. See docs/WORLD_BOOTSTRAP_V2.md.
+
+
+## Sixth iteration — read-only Verse map extractor compiles, not runtime-tested
+
+The new `VerseSingleMapBootstrapSource` references real RimWorld 1.6 terrain/roof/fog grids and spawned Things/Pawns. A core-only source abstraction has deterministic palette packing, strict spatial bounds and fail-closed validation. The bridge is reference-compiled, but no Unity process has executed it; actual fidelity and all third-party mod edge cases remain unknown. The bridge deliberately requires a trusted content manifest and an externally verified world-tile/layer ID; neither is generated automatically. World ID/entity IDs still lack durable save-bound identity. v2 still does not travel over TCP or render in a game client.

@@ -1,6 +1,6 @@
 # WorldBootstrap v2 — independent server-owned presentation bootstrap
 
-**Status:** source-implemented and CI-tested DTO schema, validation, bounded JSON codec and atomic client admission. **NOT populated from an actual Verse game; NOT sent by the current v1 local TCP probe.**
+**Status:** v2 schema, validation, bounded JSON codec, map capture builder and Verse-backed read-only map adapter are source-implemented and CI-compiled. The adapter has **NOT been executed in a real RimWorld game**; the trusted mod/Def manifest provider is not implemented and v2 is **NOT sent by the current v1 local TCP probe**.
 
 ## Motivation
 
@@ -53,8 +53,13 @@ Run `dotnet run --project Source/AuthoritativeCore.Tests/AuthoritativeCore.Tests
 
 ## Next implementation gates
 
-1. Define a trustworthy server-side, single-map Verse extractor that fills every v2 field using actual loaded game data and computes resolved content hashes; prove output matches a licensed test game.
+1. Complete the already reference-compiled single-map Verse extractor with a trustworthy manifest collector, persistent world ID and proper RimWorld 1.6 planet tile/layer mapping; then prove its outputs match a licensed test game. See docs/VERSE_V2_EXTRACTION.md.
 2. Negotiate v2 support explicitly after authentication and before client map startup; publish bounded chunks with a per-checkpoint digest.
 3. Build a **read-only** Verse client presentation layer with no client-side jobs, pathfinding, pawn trackers or world ticking. Test against a real game process.
 4. Add event-based entity changes and relationships (containers, equipped things, injuries, state-machine transitions) with transaction boundaries, and full server Scribe saves.
 5. Only after those acceptance gates, expand to multiple maps/factions and cross-time world interactions.
+
+
+## Verse-backed map extraction (sixth iteration)
+
+A read-only core capture builder now accepts `IWorldBootstrapMapSource` callbacks and packs real map-layer DTOs. The net48 `VerseSingleMapBootstrapSource` adapter reads terrain/roof/fog and spawned Verse Things/Pawns on the Unity simulation thread. `RimWorldSingleMapDriver.CaptureBootstrapV2` exposes an **explicit** call requiring a real trusted content manifest, world UUID, planet tile mapping and producer revision. It is intentionally not available to network clients and has not been executed in game. Four new pure-core mapping tests cover the packing; see docs/VERSE_V2_EXTRACTION.md.
