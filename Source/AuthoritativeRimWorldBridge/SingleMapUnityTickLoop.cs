@@ -54,6 +54,22 @@ public static class SingleMapUnityTickLoop
 
         try
         {
+            // Menu windows can force an EFFECTIVE pause without selecting the
+            // vanilla Paused speed. After closing one, RimWorld can restore its
+            // previous CurTimeSpeed. While the explicit authoritative host is
+            // active, the Harmony TickManagerUpdate prefix suppresses all
+            // vanilla ticks; the authoritative scheduler is their sole owner.
+            // Reassert the selected vanilla pause on the Unity thread before
+            // the driver's strict readiness checks and DoSingleTick.
+            var manager = Find.TickManager;
+            if (manager == null)
+                throw new InvalidOperationException("RimWorld tick manager was unloaded");
+            if (manager.CurTimeSpeed != TimeSpeed.Paused)
+            {
+                manager.CurTimeSpeed = TimeSpeed.Paused;
+                Log.Warning("[Authoritative] Restored vanilla Paused speed after a menu or speed change while the authoritative host is active");
+            }
+
             var elapsed = Time.deltaTime;
             if (float.IsNaN(elapsed) || float.IsInfinity(elapsed) ||
                 elapsed < 0f || elapsed > 5f)
@@ -67,6 +83,20 @@ public static class SingleMapUnityTickLoop
         catch (Exception e)
         {
             // Fail closed: an unexpected partial mutation must not be hidden.
+            // Vanilla TickManagerUpdate is no longer suppressed after active
+            // is cleared; guarantee a paused selected speed before that switch.
+            // If the game is being unloaded this attempt may fail: report both
+            // faults instead of swallowing the original host exception.
+            try
+            {
+                var manager = Find.TickManager;
+                if (manager != null)
+                    manager.CurTimeSpeed = TimeSpeed.Paused;
+            }
+            catch (Exception pauseException)
+            {
+                Log.Error("[Authoritative] Could not pause vanilla ticks during emergency shutdown: " + pauseException);
+            }
             active = null;
             session.StopLocalTransport();
             session.Host.RejectPendingCommands("Authoritative host failed");
