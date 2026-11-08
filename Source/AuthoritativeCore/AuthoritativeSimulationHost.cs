@@ -84,6 +84,23 @@ public sealed class AuthoritativeSimulationHost
         Domains.Advance(elapsed, driver.ExecuteGameTick);
     }
 
+    // Stop path: do not leave TCP workers awaiting receipts after the game
+    // loop stops. This method also runs on the simulation owner thread.
+    public int RejectPendingCommands(string reason)
+    {
+        EnsureThread();
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("A reason is required", nameof(reason));
+        int rejected = 0;
+        while (incoming.TryDequeue(out var item))
+        {
+            Interlocked.Decrement(ref queuedCommands);
+            item.Completion.TrySetResult(new CommandReceipt(item.Command.CommandId, false, reason));
+            rejected++;
+        }
+        return rejected;
+    }
+
     public WorldSnapshot CaptureSnapshot()
     {
         EnsureThread();

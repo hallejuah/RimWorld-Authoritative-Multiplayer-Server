@@ -15,6 +15,7 @@ var cases = new (string Name, Action Run)[]
     ("Commands run only on their owning simulation thread", CommandThreadAffinity),
     ("Host queues commands and ticks on simulation thread", HostPipeline),
     ("Host rejects command queue overload", HostBackpressure),
+    ("Host drains pending receipts when stopped", HostStopDrains),
     ("Zero-based RimWorld map IDs are mapped to positive domains", MapDomainMapping),
     ("Replicator publishes ordered pawn changes", ReplicatorDeltas),
     ("Replicator rejects duplicate or migrated identities", ReplicatorSafety),
@@ -263,6 +264,17 @@ static void MapDomainMapping()
     Check(MapDomainIds.FromMapUniqueId(1) == 2, "Map 1 mapping");
     MustThrow<ArgumentOutOfRangeException>(() => MapDomainIds.FromMapUniqueId(-1));
     MustThrow<ArgumentOutOfRangeException>(() => MapDomainIds.FromMapUniqueId(int.MaxValue));
+}
+
+static void HostStopDrains()
+{
+    var host = new AuthoritativeSimulationHost(new TestAuthorization(), new TestGameDriver(), () => 7);
+    var first = host.EnqueueCommand("alice", Move());
+    var second = host.EnqueueCommand("alice", Move());
+    Check(host.RejectPendingCommands("Stopped") == 2, "not all pending requests drained");
+    Check(!first.GetAwaiter().GetResult().Accepted &&
+        !second.GetAwaiter().GetResult().Accepted &&
+        host.QueuedCommandCount == 0, "shutdown leaked requests");
 }
 
 static void HostBackpressure()

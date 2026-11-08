@@ -15,6 +15,8 @@ public static class SingleMapUnityTickLoop
     private static bool patched;
 
     public static bool IsActive => active != null;
+    internal static bool IsRunningHost(LoadedSingleMapHost host) =>
+        ReferenceEquals(active, host);
 
     public static void Start(LoadedSingleMapHost host)
     {
@@ -38,7 +40,10 @@ public static class SingleMapUnityTickLoop
     public static void Stop()
     {
         if (active == null) return;
+        var previous = active;
         active = null;
+        previous.StopLocalTransport();
+        previous.Host.RejectPendingCommands("Authoritative host stopped");
         Log.Message("[Authoritative] Single-map simulation loop stopped; game remains paused");
     }
 
@@ -63,6 +68,8 @@ public static class SingleMapUnityTickLoop
         {
             // Fail closed: an unexpected partial mutation must not be hidden.
             active = null;
+            session.StopLocalTransport();
+            session.Host.RejectPendingCommands("Authoritative host failed");
             Log.Error("[Authoritative] Stopping simulation after host error: " + e);
         }
     }

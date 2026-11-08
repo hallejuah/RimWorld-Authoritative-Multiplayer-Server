@@ -1,5 +1,6 @@
 using System;
 using Multiplayer.Authoritative;
+using Multiplayer.Authoritative.Transport;
 using Verse;
 
 namespace Multiplayer.Authoritative.RimWorldBridge;
@@ -11,11 +12,38 @@ public sealed class LoadedSingleMapHost
     public RimWorldSingleMapDriver Driver { get; }
     public AuthoritativeSimulationHost Host { get; }
     public WorldStateReplicator Replication { get; } = new();
+    private LoopbackTransportServer? localTransport;
+    private bool feedStarted;
+
+    // Explicitly start a local TCP experiment only AFTER the Unity game loop
+    // is running. The caller must supply a real local credential policy.
+    public int StartLocalTransport(ILoopbackAuthenticator authenticator, int maxClients = 8)
+    {
+        if (!SingleMapUnityTickLoop.IsRunningHost(this))
+            throw new InvalidOperationException("Activate this game host before opening TCP");
+        if (localTransport != null)
+            throw new InvalidOperationException("Local transport already running");
+        var transport = new LoopbackTransportServer(authenticator, Host, StateFeed, maxClients);
+        transport.Start();
+        localTransport = transport;
+        return transport.Port;
+    }
+
+    public void StopLocalTransport()
+    {
+        localTransport?.Dispose();
+        localTransport = null;
+    }
     public StatePublicationHub StateFeed { get; } = new();
 
     // Called once, on Unity thread, when the opt-in loop is activated.
     // The network worker only reads the thread-safe StateFeed afterwards.
-    internal void BeginStateFeed() => StateFeed.Initialize(Host.CaptureSnapshot());
+    internal void BeginStateFeed()
+    {
+        if (feedStarted) return;
+        StateFeed.Initialize(Host.CaptureSnapshot());
+        feedStarted = true;
+    }
     internal void PublishState() => StateFeed.Publish(Host.CaptureSnapshot());
 
     // Network initial state and subsequent deltas must be captured on the
