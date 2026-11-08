@@ -69,14 +69,17 @@ public sealed class SimulationDomainManager
                 continue;
             var pending = state.PendingTicks + elapsed.TotalSeconds * TicksPerSecond * state.Speed;
             var toRun = (int)Math.Min(Math.Floor(pending), MaxTicksPerDomainPerAdvance);
+            // Retain accumulated work even if a game callback throws. Only ticks
+            // actually completed are removed, preventing lost or replayed time.
+            state = state with { PendingTicks = pending };
+            domains[id] = state;
             for (var i = 0; i < toRun; i++)
             {
                 var nextTick = checked(state.Tick + 1);
                 executeGameTick(id, nextTick);
-                state = state with { Tick = nextTick };
+                state = state with { Tick = nextTick, PendingTicks = state.PendingTicks - 1 };
                 domains[id] = state;
             }
-            domains[id] = state with { PendingTicks = pending - toRun };
         }
     }
 
