@@ -17,7 +17,7 @@ public sealed class WorldStateReplicator
         previousGameVersion = gameState.Version;
         Version = 0;
         Initialized = true;
-        return new WorldSnapshot(Version, Sorted(next).ToArray());
+        return CurrentSnapshot();
     }
 
     public WorldDelta? CaptureChanges(WorldSnapshot gameState)
@@ -54,9 +54,22 @@ public sealed class WorldStateReplicator
         if (changes.Count == 0)
             return null;
 
-        var delta = new WorldDelta(Version, newVersion, changes.ToArray());
+        var delta = new WorldDelta(Version, newVersion, changes.ToArray())
+        {
+            GameStateVersion = gameState.Version
+        };
         Version = newVersion;
         return delta;
+    }
+
+    public WorldSnapshot CurrentSnapshot()
+    {
+        if (!Initialized)
+            throw new InvalidOperationException("Publisher has not been initialized");
+        return new WorldSnapshot(Version, Sorted(published).ToArray())
+        {
+            GameStateVersion = previousGameVersion
+        };
     }
 
     private static Dictionary<long, ThingState> Validate(WorldSnapshot snapshot)

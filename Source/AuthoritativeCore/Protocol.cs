@@ -40,6 +40,14 @@ public enum ChangeKind
 
 public sealed record StateChange(ChangeKind Kind, long ThingId, ThingState? State);
 
-public sealed record WorldSnapshot(long Version, IReadOnlyList<ThingState> Things);
+// Version is the ordered NETWORK revision; GameStateVersion is the authoritative
+// game revision that PlayerCommand.ExpectedStateVersion must reference.
+public sealed record WorldSnapshot(long Version, IReadOnlyList<ThingState> Things)
+{
+    public long GameStateVersion { get; init; }
+}
 
-public sealed record WorldDelta(long BaseVersion, long Version, IReadOnlyList<StateChange> Changes);
+public sealed record WorldDelta(long BaseVersion, long Version, IReadOnlyList<StateChange> Changes)
+{
+    public long GameStateVersion { get; init; }
+}

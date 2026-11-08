@@ -11,6 +11,12 @@ public sealed class LoadedSingleMapHost
     public RimWorldSingleMapDriver Driver { get; }
     public AuthoritativeSimulationHost Host { get; }
     public WorldStateReplicator Replication { get; } = new();
+    public StatePublicationHub StateFeed { get; } = new();
+
+    // Called once, on Unity thread, when the opt-in loop is activated.
+    // The network worker only reads the thread-safe StateFeed afterwards.
+    internal void BeginStateFeed() => StateFeed.Initialize(Host.CaptureSnapshot());
+    internal void PublishState() => StateFeed.Publish(Host.CaptureSnapshot());
 
     // Network initial state and subsequent deltas must be captured on the
     // Unity simulation thread; consumers can encode them via ProtocolCodec.

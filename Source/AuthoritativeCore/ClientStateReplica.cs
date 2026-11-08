@@ -14,6 +14,7 @@ public sealed class ClientStateReplica
     private Dictionary<long, ThingState> things = new();
     public bool Initialized { get; private set; }
     public long Version { get; private set; }
+    public long GameStateVersion { get; private set; }
     public IReadOnlyDictionary<long, ThingState> Things => new ReadOnlyDictionary<long, ThingState>(things);
 
     public ReplicaApplyResult InstallSnapshot(WorldSnapshot snapshot)
@@ -33,6 +34,7 @@ public sealed class ClientStateReplica
         // Swap only after validating the complete snapshot.
         things = candidate;
         Version = snapshot.Version;
+        GameStateVersion = snapshot.GameStateVersion;
         Initialized = true;
         return ReplicaApplyResult.Applied;
     }
@@ -78,6 +80,7 @@ public sealed class ClientStateReplica
 
         things = candidate;
         Version = delta.Version;
+        GameStateVersion = delta.GameStateVersion;
         return ReplicaApplyResult.Applied;
     }
 

@@ -30,6 +30,7 @@ public static class SingleMapUnityTickLoop
             patched = true;
         }
 
+        host.BeginStateFeed();
         active = host;
         Log.Message("[Authoritative] Single-map simulation loop activated on the Unity thread");
     }
@@ -56,6 +57,7 @@ public static class SingleMapUnityTickLoop
             // Real Verse callbacks are dispatched by the game's own Update
             // loop, never by the LiteNetLib network worker.
             session.Host.Pump(TimeSpan.FromSeconds(elapsed));
+            session.PublishState();
         }
         catch (Exception e)
         {
