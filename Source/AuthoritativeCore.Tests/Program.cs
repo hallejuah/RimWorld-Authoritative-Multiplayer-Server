@@ -13,6 +13,8 @@ var cases = new (string Name, Action Run)[]
     ("Domains tick independently and restore clocks", DomainClocks),
     ("Domain callbacks stay on one thread", ThreadAffinity),
     ("Commands run only on their owning simulation thread", CommandThreadAffinity),
+    ("Host queues commands and ticks on simulation thread", HostPipeline),
+    ("Host rejects command queue overload", HostBackpressure),
     ("A failed game tick does not advance its clock", FailedTick)
 };
 
@@ -188,6 +190,38 @@ static void CommandThreadAffinity()
     Check(executor.Applied == 0, "network thread executed gameplay");
 }
 
+static void HostPipeline()
+{
+    var driver = new TestGameDriver();
+    var host = new AuthoritativeSimulationHost(new TestAuthorization(), driver, () => 7);
+    host.Domains.AddDomain(10, 1);
+    host.Domains.SetSpeed(10, 1);
+
+    // Simulate arrival from a transport worker, not the game thread.
+    var receiptTask = Task.Run(() => host.EnqueueCommand("alice", Move())).GetAwaiter().GetResult();
+    Check(!receiptTask.IsCompleted && host.QueuedCommandCount == 1, "command executed on worker");
+    host.Pump(TimeSpan.FromSeconds(1));
+    Check(receiptTask.GetAwaiter().GetResult().Accepted, "command rejected");
+    Check(driver.Applied == 1 && driver.Ticks == 60 && host.QueuedCommandCount == 0,
+        "incorrect host dispatch");
+    Check(host.CaptureSnapshot().Version == 7, "snapshot driver not called");
+    MustThrow<InvalidOperationException>(() =>
+        Task.Run(() => host.CaptureSnapshot()).GetAwaiter().GetResult());
+}
+
+static void HostBackpressure()
+{
+    var host = new AuthoritativeSimulationHost(new TestAuthorization(), new TestGameDriver(), () => 7,
+        maximumQueuedCommands: 1);
+    var first = host.EnqueueCommand("alice", Move());
+    var overflow = host.EnqueueCommand("alice", Move());
+    Check(!overflow.GetAwaiter().GetResult().Accepted, "queue overload accepted");
+    Check(host.QueuedCommandCount == 1 && !first.IsCompleted, "queue mutated");
+    host.Pump(TimeSpan.Zero);
+    Check(first.GetAwaiter().GetResult().Accepted && host.QueuedCommandCount == 0,
+        "pending command not drained");
+}
+
 static void FailedTick()
 {
     var manager = new SimulationDomainManager();
@@ -219,5 +253,38 @@ sealed class TestExecutor : ICommandExecutor
         Applied++;
         reason = "";
         return true;
+    }
+}
+
+sealed class TestGameDriver : IAuthoritativeGameDriver
+{
+    private readonly int owner = Environment.CurrentManagedThreadId;
+    public int Applied { get; private set; }
+    public int Ticks { get; private set; }
+
+    public bool TryExecute(PlayerCommand command, out string reason)
+    {
+        AssertOwner();
+        Applied++;
+        reason = "";
+        return true;
+    }
+
+    public void ExecuteGameTick(int domainId, long nextTick)
+    {
+        AssertOwner();
+        Ticks++;
+    }
+
+    public WorldSnapshot CaptureSnapshot()
+    {
+        AssertOwner();
+        return new WorldSnapshot(7, [new ThingState(100, 10, 1, 4, 5)]);
+    }
+
+    private void AssertOwner()
+    {
+        if (Environment.CurrentManagedThreadId != owner)
+            throw new InvalidOperationException("Test game ran outside simulation thread");
     }
 }
