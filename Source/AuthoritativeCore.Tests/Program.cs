@@ -36,7 +36,7 @@ var cases = new (string Name, Action Run)[]
     ("Content tree enforces budget, file changes and symlinks", ContentFingerprintTests.Safety),
     ("Resolved Def identities hash in stable deterministic order", ContentFingerprintTests.DefIdentities),
     ("Mod manifest checks loaded order, content and cancellation", ContentFingerprintTests.Manifest)
-};
+}.Concat(EntityIdentityTests.Cases).ToArray();
 
 var failures = 0;
 foreach (var test in cases)
