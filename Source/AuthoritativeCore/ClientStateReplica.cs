@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace Multiplayer.Authoritative;
 
 public enum ReplicaApplyResult
@@ -12,7 +14,7 @@ public sealed class ClientStateReplica
     private Dictionary<long, ThingState> things = new();
     public bool Initialized { get; private set; }
     public long Version { get; private set; }
-    public IReadOnlyDictionary<long, ThingState> Things => things;
+    public IReadOnlyDictionary<long, ThingState> Things => new ReadOnlyDictionary<long, ThingState>(things);
 
     public ReplicaApplyResult InstallSnapshot(WorldSnapshot snapshot)
     {

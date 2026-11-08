@@ -106,6 +106,7 @@ static void SnapshotAndDeltas()
     Check(replica.ApplyDelta(new WorldDelta(12, 13,
         [new StateChange(ChangeKind.Update, 100, pawnMoved),
          new StateChange(ChangeKind.Create, 101, item)])) == ReplicaApplyResult.Applied, "delta");
+    Check(replica.Things is not Dictionary<long, ThingState>, "mutable state dictionary exposed");
     Check(replica.Version == 13 && replica.Things[100].X == 6 && replica.Things.ContainsKey(101),
         "replica content");
     Check(replica.ApplyDelta(new WorldDelta(13, 14,
