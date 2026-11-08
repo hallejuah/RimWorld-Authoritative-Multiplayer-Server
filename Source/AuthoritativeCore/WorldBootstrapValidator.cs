@@ -122,7 +122,7 @@ public static class WorldBootstrapValidator
 
     private static bool SafeName(string? name)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.Length > 128)
+        if (name is null || name.Length == 0 || name.Length > 128)
             return false;
         foreach (var c in name)
             if (char.IsControl(c) || char.IsWhiteSpace(c))
