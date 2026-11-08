@@ -6,6 +6,7 @@ var cases = new (string Name, Action Run)[]
     ("Faction ownership is enforced", FactionIsolation),
     ("Transport session cannot be spoofed", SessionSpoofing),
     ("Stale commands are rejected", StaleCommand),
+    ("Recently observed move revisions may be accepted", RecentMove),
     ("Unsupported speed is rejected", InvalidSpeed),
     ("Snapshot and deltas are applied", SnapshotAndDeltas),
     ("Gaps and invalid updates do not partially mutate", ReplicaIntegrity),
@@ -91,8 +92,18 @@ static void SessionSpoofing()
 static void StaleCommand()
 {
     var executor = new TestExecutor();
-    Check(!Processor(executor).Process("alice", Move(expectedVersion: 6)).Accepted, "stale command");
+    Check(!Processor(executor, version: 500).Process("alice", Move(expectedVersion: 1)).Accepted, "stale command");
     Check(executor.Applied == 0, "stale command executed");
+}
+
+static void RecentMove()
+{
+    var executor = new TestExecutor();
+    Check(Processor(executor, version: 100).Process("alice",
+        Move(expectedVersion: 95)).Accepted, "valid recent command rejected");
+    Check(!Processor(executor, version: 100).Process("alice",
+        Move(expectedVersion: 101)).Accepted, "future game revision accepted");
+    Check(executor.Applied == 1, "revision check executed invalid command");
 }
 
 static void InvalidSpeed()

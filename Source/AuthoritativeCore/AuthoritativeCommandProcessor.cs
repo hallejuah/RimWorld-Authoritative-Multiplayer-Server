@@ -19,9 +19,15 @@ public sealed class AuthoritativeCommandProcessor(
     ICommandAuthorization authorization,
     ICommandExecutor executor,
     Func<long> currentStateVersion,
-    int maximumRecordedCommands = 100_000)
+    int maximumRecordedCommands = 100_000,
+    int maximumMoveRevisionLag = 180)
 {
     private readonly int ownerThread = Environment.CurrentManagedThreadId;
+    // A move can be based on a recently observed snapshot while ticks continue.
+    // The Verse executor MUST revalidate the pawn and destination at execution.
+    private readonly int allowedMoveLag = maximumMoveRevisionLag >= 0
+        ? maximumMoveRevisionLag
+        : throw new ArgumentOutOfRangeException(nameof(maximumMoveRevisionLag));
     private readonly Dictionary<(string SessionId, Guid Id), (PlayerCommand Command, CommandReceipt Receipt)> receipts = new();
 
     public CommandReceipt Process(string authenticatedSessionId, PlayerCommand command)
@@ -53,8 +59,22 @@ public sealed class AuthoritativeCommandProcessor(
             factionId != command.FactionId ||
             !authorization.OwnsDomain(factionId, command.DomainId))
             return Reject(command, "No authority over requested faction and domain");
-        if (command.ExpectedStateVersion != currentStateVersion())
+        var serverRevision = currentStateVersion();
+        if (serverRevision < 0 || command.ExpectedStateVersion < 0 ||
+            command.ExpectedStateVersion > serverRevision)
+            return Reject(command, "Invalid future or negative state version");
+
+        var lag = serverRevision - command.ExpectedStateVersion;
+        if (command.Kind == AuthoritativeCommandKind.MovePawn)
+        {
+            if (lag > allowedMoveLag)
+                return Reject(command, "Movement command too stale");
+        }
+        else if (lag != 0)
+        {
+            // Non-movement commands still require exact snapshot revision.
             return Reject(command, "Stale state version");
+        }
         if (command.Kind == AuthoritativeCommandKind.MovePawn && command.TargetThingId <= 0)
             return Reject(command, "Invalid pawn ID");
         if (command.Kind == AuthoritativeCommandKind.SetDomainSpeed &&
