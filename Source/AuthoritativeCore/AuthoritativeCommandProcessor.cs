@@ -28,8 +28,8 @@ public sealed class AuthoritativeCommandProcessor(
     {
         if (Environment.CurrentManagedThreadId != ownerThread)
             throw new InvalidOperationException("Command processing must run on the simulation thread");
-        ArgumentNullException.ThrowIfNull(authenticatedSessionId);
-        ArgumentNullException.ThrowIfNull(command);
+        if (authenticatedSessionId is null) throw new ArgumentNullException(nameof(authenticatedSessionId));
+        if (command is null) throw new ArgumentNullException(nameof(command));
 
         if (authenticatedSessionId.Length == 0)
             return Reject(command, "Unauthenticated session");

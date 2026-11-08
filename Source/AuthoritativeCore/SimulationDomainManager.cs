@@ -16,8 +16,9 @@ public sealed class SimulationDomainManager
         EnsureThread();
         if (domainId <= 0 || factionId <= 0 || startingTick < 0)
             throw new ArgumentOutOfRangeException(nameof(domainId));
-        if (!domains.TryAdd(domainId, new DomainClockState(domainId, factionId, startingTick, 0, 0)))
+        if (domains.ContainsKey(domainId))
             throw new InvalidOperationException("Domain ID already exists");
+        domains.Add(domainId, new DomainClockState(domainId, factionId, startingTick, 0, 0));
     }
 
     public void SetSpeed(int domainId, int speed)
@@ -40,15 +41,16 @@ public sealed class SimulationDomainManager
     public void RestoreClocks(IReadOnlyList<DomainClockState> saved)
     {
         EnsureThread();
-        ArgumentNullException.ThrowIfNull(saved);
+        if (saved is null) throw new ArgumentNullException(nameof(saved));
         var replacement = new SortedDictionary<int, DomainClockState>();
         foreach (var state in saved)
         {
             if (state is null || state.DomainId <= 0 || state.FactionId <= 0 ||
                 state.Tick < 0 || state.Speed is < 0 or > 3 ||
                 double.IsNaN(state.PendingTicks) || double.IsInfinity(state.PendingTicks) ||
-                state.PendingTicks < 0 || !replacement.TryAdd(state.DomainId, state))
+                state.PendingTicks < 0 || replacement.ContainsKey(state.DomainId))
                 throw new ArgumentException("Invalid saved domain clocks", nameof(saved));
+            replacement.Add(state.DomainId, state);
         }
         domains.Clear();
         foreach (var pair in replacement)
@@ -58,7 +60,7 @@ public sealed class SimulationDomainManager
     public void Advance(TimeSpan elapsed, Action<int, long> executeGameTick)
     {
         EnsureThread();
-        ArgumentNullException.ThrowIfNull(executeGameTick);
+        if (executeGameTick is null) throw new ArgumentNullException(nameof(executeGameTick));
         if (elapsed < TimeSpan.Zero || elapsed > TimeSpan.FromSeconds(5))
             throw new ArgumentOutOfRangeException(nameof(elapsed));
 

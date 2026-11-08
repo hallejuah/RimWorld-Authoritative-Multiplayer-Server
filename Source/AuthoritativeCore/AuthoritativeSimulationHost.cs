@@ -30,9 +30,9 @@ public sealed class AuthoritativeSimulationHost
         Func<long> currentStateVersion,
         int maximumQueuedCommands = 2048)
     {
-        ArgumentNullException.ThrowIfNull(authorization);
-        ArgumentNullException.ThrowIfNull(driver);
-        ArgumentNullException.ThrowIfNull(currentStateVersion);
+        if (authorization is null) throw new ArgumentNullException(nameof(authorization));
+        if (driver is null) throw new ArgumentNullException(nameof(driver));
+        if (currentStateVersion is null) throw new ArgumentNullException(nameof(currentStateVersion));
         if (maximumQueuedCommands <= 0)
             throw new ArgumentOutOfRangeException(nameof(maximumQueuedCommands));
 
@@ -46,8 +46,8 @@ public sealed class AuthoritativeSimulationHost
     // Called by transport after authentication. This does NOT execute the command.
     public Task<CommandReceipt> EnqueueCommand(string authenticatedSessionId, PlayerCommand command)
     {
-        ArgumentNullException.ThrowIfNull(authenticatedSessionId);
-        ArgumentNullException.ThrowIfNull(command);
+        if (authenticatedSessionId is null) throw new ArgumentNullException(nameof(authenticatedSessionId));
+        if (command is null) throw new ArgumentNullException(nameof(command));
 
         if (Interlocked.Increment(ref queuedCommands) > queueLimit)
         {

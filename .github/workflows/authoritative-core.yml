@@ -20,5 +20,7 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Build isolated authoritative core
         run: dotnet build Source/AuthoritativeCore/AuthoritativeCore.csproj -c Release --warnaserror
+      - name: Build RimWorld-compatible netstandard2.0 target
+        run: dotnet build Source/AuthoritativeCore/AuthoritativeCore.csproj -c Release --framework netstandard2.0 --warnaserror
       - name: Execute focused authoritative tests
         run: dotnet run --project Source/AuthoritativeCore.Tests/AuthoritativeCore.Tests.csproj -c Release

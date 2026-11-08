@@ -15,7 +15,7 @@ public static class ProtocolCodec
 
     public static byte[] EncodeCommand(PlayerCommand command)
     {
-        ArgumentNullException.ThrowIfNull(command);
+        if (command is null) throw new ArgumentNullException(nameof(command));
         var bytes = JsonSerializer.SerializeToUtf8Bytes(command, Options);
         CheckSize(bytes, AuthoritativeProtocol.MaxCommandBytes);
         return bytes;
@@ -34,7 +34,7 @@ public static class ProtocolCodec
 
     public static byte[] EncodeSnapshot(WorldSnapshot snapshot)
     {
-        ArgumentNullException.ThrowIfNull(snapshot);
+        if (snapshot is null) throw new ArgumentNullException(nameof(snapshot));
         var bytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, Options);
         CheckSize(bytes, AuthoritativeProtocol.MaxStateMessageBytes);
         return bytes;
@@ -49,7 +49,7 @@ public static class ProtocolCodec
 
     public static byte[] EncodeDelta(WorldDelta delta)
     {
-        ArgumentNullException.ThrowIfNull(delta);
+        if (delta is null) throw new ArgumentNullException(nameof(delta));
         var bytes = JsonSerializer.SerializeToUtf8Bytes(delta, Options);
         CheckSize(bytes, AuthoritativeProtocol.MaxStateMessageBytes);
         return bytes;

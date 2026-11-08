@@ -18,15 +18,16 @@ public sealed class ClientStateReplica
 
     public ReplicaApplyResult InstallSnapshot(WorldSnapshot snapshot)
     {
-        ArgumentNullException.ThrowIfNull(snapshot);
+        if (snapshot is null) throw new ArgumentNullException(nameof(snapshot));
         if (snapshot.Version < 0 || snapshot.Things is null)
             return ReplicaApplyResult.NeedsSnapshot;
 
         var candidate = new Dictionary<long, ThingState>();
         foreach (var thing in snapshot.Things)
         {
-            if (!Valid(thing) || !candidate.TryAdd(thing.Id, thing))
+            if (!Valid(thing) || candidate.ContainsKey(thing.Id))
                 return ReplicaApplyResult.NeedsSnapshot;
+            candidate.Add(thing.Id, thing);
         }
 
         // Swap only after validating the complete snapshot.
@@ -38,7 +39,7 @@ public sealed class ClientStateReplica
 
     public ReplicaApplyResult ApplyDelta(WorldDelta delta)
     {
-        ArgumentNullException.ThrowIfNull(delta);
+        if (delta is null) throw new ArgumentNullException(nameof(delta));
         if (!Initialized || delta.Changes is null ||
             delta.BaseVersion != Version || delta.Version != Version + 1)
             return ReplicaApplyResult.NeedsSnapshot;
@@ -53,8 +54,9 @@ public sealed class ClientStateReplica
             {
                 case ChangeKind.Create:
                     if (change.State is null || change.State.Id != change.ThingId ||
-                        !Valid(change.State) || !candidate.TryAdd(change.ThingId, change.State))
+                        !Valid(change.State) || candidate.ContainsKey(change.ThingId))
                         return ReplicaApplyResult.NeedsSnapshot;
+                    candidate.Add(change.ThingId, change.State);
                     break;
                 case ChangeKind.Update:
                     if (change.State is null || change.State.Id != change.ThingId ||
