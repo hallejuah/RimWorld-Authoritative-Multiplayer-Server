@@ -82,6 +82,15 @@ public sealed class RimWorldSingleMapDriver : IAuthoritativeGameDriver
         return true;
     }
 
+    // Capture the actual active mod roots, their About.xml version metadata
+    // and resolved Def database identities on the Unity thread. Disk hashing
+    // of the copied descriptors should be off-thread, before activating v2.
+    public VerseContentManifestInputs CaptureManifestInputs()
+    {
+        EnsureReady();
+        return VerseContentManifestInputs.CaptureOnGameThread();
+    }
+
     // A proper future session must persist worldId and derive the manifest
     // from actual loaded mods/Defs, never synthesize hashes or accept them
     // from an untrusted client. RimWorld 1.6 PlanetTile conversion is left
