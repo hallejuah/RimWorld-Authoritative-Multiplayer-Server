@@ -20,7 +20,14 @@ var cases = new (string Name, Action Run)[]
     ("Zero-based RimWorld map IDs are mapped to positive domains", MapDomainMapping),
     ("Replicator publishes ordered pawn changes", ReplicatorDeltas),
     ("Replicator rejects duplicate or migrated identities", ReplicatorSafety),
-    ("A failed game tick does not advance its clock", FailedTick)
+    ("A failed game tick does not advance its clock", FailedTick),
+    ("V2 bootstrap map layers and entities roundtrip", WorldBootstrapTests.Roundtrip),
+    ("V2 bootstrap rejects invalid terrain and fog", WorldBootstrapTests.InvalidMap),
+    ("V2 bootstrap rejects dangling entities and IDs", WorldBootstrapTests.InvalidEntity),
+    ("V2 mod manifest rejects reordered and changed mods", WorldBootstrapTests.ManifestMismatch),
+    ("V2 client admission is atomic across invalid updates", WorldBootstrapTests.AtomicAdmission),
+    ("V2 snapshots are deep copied and digest is canonical", WorldBootstrapTests.DefensiveCopies),
+    ("V2 codec rejects malformed and oversized payloads", WorldBootstrapTests.MalformedPayload)
 };
 
 var failures = 0;
