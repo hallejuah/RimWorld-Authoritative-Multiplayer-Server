@@ -220,7 +220,7 @@ public static class ContentFingerprintBuilder
 
     private static bool SafeToken(string? value, int limit)
     {
-        if (string.IsNullOrEmpty(value) || value.Length > limit)
+        if (value is null || value.Length == 0 || value.Length > limit)
             return false;
         foreach (var c in value)
             if (char.IsControl(c) || char.IsWhiteSpace(c))
