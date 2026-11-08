@@ -6,7 +6,7 @@ Status: isolated scheduling logic implemented; RimWorld tick binding and cross-d
 
 SimulationDomainManager maintains one clock per positive domain ID: faction ID, game tick, selected speed (0 paused; 1x, 2x or 3x), and pending ticks. A single owner thread dispatches tick callbacks at a nominal 60 base ticks per real second per speed. It caps dispatch at 240 callbacks per domain per Advance invocation and retains a backlog; callbacks are sequential and an exception propagates. A successful callback is counted exactly once. Pausing one domain does not pause another. ExportClocks/RestoreClocks serialize metadata for future integration with world saves.
 
-This is purely a clock scheduler. It does not itself tick Verse maps, simulate quests or validate game-state writes. Real duration, lag and event ordering will require server telemetry and integration tests.
+This is purely a clock scheduler. AuthoritativeSimulationHost.Pump can dispatch the per-domain callbacks, but no actual Verse game driver is bound. It does not itself tick Verse maps, simulate quests or validate game-state writes. Real duration, lag and event ordering will require server telemetry and integration tests.
 
 ## Global time is not local map time
 

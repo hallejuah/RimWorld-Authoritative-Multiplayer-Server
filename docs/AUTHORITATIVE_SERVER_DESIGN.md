@@ -8,7 +8,7 @@ The original multiplayer stays in lockstep mode with protocol 54. New code lives
 
 Proposed production subsystems:
 
-1. Unity/Verse SimulationHost: owns Current.Game, Find, maps, game object IDs, RNG, Scribe saves, and the sole game simulation thread. Must be integrated with genuine RimWorld 1.6 methods before it is considered implemented.
+1. Unity/Verse SimulationHost: must own Current.Game, Find, maps, game object IDs, RNG, Scribe saves and the sole game simulation thread. The transport-neutral AuthoritativeSimulationHost is now implemented: it enqueues transport commands with bounded backpressure, drains a limited number on the owner thread, dispatches game-tick callbacks and requests a consistent snapshot. The actual IAuthoritativeGameDriver binding to Verse is NOT implemented.
 2. SimulationDomainManager (initial implementation): a single-threaded 60-base-tick scheduler, per-domain tick/speed/pause, export/restore of clock metadata. Implemented in Source/AuthoritativeCore/SimulationDomainManager.cs; no Verse callback is presently connected.
 3. CommandProcessor (initial implementation): validates authenticated connection identity, declared faction, owned domain, protocol, state revision and unique command ID. It enforces owning-thread execution and invokes an ICommandExecutor, to be implemented against a real Verse runtime. A failing executor must not partially mutate the game.
 4. WorldStateReplicator (pending): server-only creation/update/deletion journal, stable network identifiers, snapshot cut at a sim-thread barrier, per-subscriber interest filtering, sequenced and acknowledged deltas.
@@ -28,7 +28,7 @@ Proposed production subsystems:
 
 ## Immediate limitations of implemented code
 
-The production ICommandExecutor and ICommandAuthorization session provider do not exist yet. The test project supplies test implementations only. The command receipt ledger is in memory, bounded at 100,000 IDs by default, and not persistent; it fails closed when full. StateVersion is an injected value, not a complete entity revision vector. No command is executed through Verse and no network sockets are opened. The simplified ThingState (ID, domain, faction, X, Z) is only a transport example; it cannot reconstruct a pawn or a map.
+The production IAuthoritativeGameDriver/ICommandExecutor binding and ICommandAuthorization session provider do not exist yet. The test project supplies test implementations only. The command receipt ledger is in memory, bounded at 100,000 IDs by default, and not persistent; it fails closed when full. StateVersion is an injected value, not a complete entity revision vector. No command is executed through Verse and no network sockets are opened. The simplified ThingState (ID, domain, faction, X, Z) is only a transport example; it cannot reconstruct a pawn or a map.
 
 The scheduler is deliberately NOT a substitute for RimWorld's AsyncTimeComp: it supplies when-to-tick decisions, not how to-tick RimWorld gameplay. ClientStateReplica stores DTOs and is not a proof that local gameplay ticks can be disabled without breaking UI.
 

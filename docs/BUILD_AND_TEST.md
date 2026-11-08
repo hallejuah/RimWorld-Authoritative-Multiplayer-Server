@@ -24,7 +24,7 @@ GitHub files, master revision, project references, LICENSE files and C# sources 
 The interactive execution sandbox does NOT have a dotnet SDK, Mono C# compiler, MSBuild or locally accessible game DLLs. Direct git clone was unavailable because container DNS could not reach github.com. Therefore no local compilation or actual RimWorld gameplay integration has run here.
 
 GitHub Actions DID run the projects on hosted runners:
-- Isolated core workflow: https://github.com/hallejuah/RimWorld-Authoritative-Multiplayer-Server/actions/runs/42481107400 — .NET 8 Release build succeeded with zero warnings and errors; all 11 first-revision standalone core scenarios passed. Subsequent commits add further test coverage and have their own CI runs.
+- Isolated core workflow: https://github.com/hallejuah/RimWorld-Authoritative-Multiplayer-Server/actions/runs/42481107400 — .NET 8 Release build succeeded with zero warnings and errors; all 11 first-revision standalone core scenarios passed. The later authoritative host/queue revision passed 14/14 focused tests in https://github.com/hallejuah/RimWorld-Authoritative-Multiplayer-Server/actions/runs/42481559461 (0 warnings, 0 errors).
 - Existing solution PR workflow: https://github.com/hallejuah/RimWorld-Authoritative-Multiplayer-Server/actions/runs/42481107485 — original solution Debug and Release builds passed (68 and 78 existing warnings, respectively; zero errors), and 85 existing tests passed, zero failed/skipped.
 
 These are real automated build/test results, but neither workflow starts RimWorld or exercises Unity integration.
@@ -38,6 +38,7 @@ These are real automated build/test results, but neither workflow starts RimWorl
 - Typed command/snapshot/delta serialization and message-size enforcement.
 - Independent domain clocks, pause, save/restore of clock metadata, duplicate domain IDs.
 - Reject dispatch on a different thread and preserve clock state on a failed tick.
+- Bounded transport-thread command queue, simulation-thread host pump and overload rejection.
 
 ## Integration work still required
 

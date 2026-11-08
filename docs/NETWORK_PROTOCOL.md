@@ -8,7 +8,7 @@ PlayerCommand fields: ProtocolVersion, CommandId (UUID), SessionId (untrusted cl
 
 Current recognized kinds: MovePawn, SetDomainSpeed. The payload is a typed DTO, not a serialized Verse object.
 
-CommandProcessor.Process(authenticatedSessionId, command) is the trust boundary. The transport MUST derive authenticatedSessionId from its authenticated connection, never from the payload. The processor checks protocol v1, nonempty ID, identity equality, faction/domain ownership, exact expected version and supported command fields. The receipt records accepted/rejected game execution after a known ID is processed. Retransmission of the same ID and payload returns its saved receipt; reusing an ID with changed fields is rejected. A rejected precondition is not cached; a truly durable host must additionally record operation/transaction commits.
+Transport workers may enqueue commands through AuthoritativeSimulationHost.EnqueueCommand, and only its owning-thread Pump executes them. CommandProcessor.Process(authenticatedSessionId, command) is the trust boundary. The transport MUST derive authenticatedSessionId from its authenticated connection, never from the payload. The processor checks protocol v1, nonempty ID, identity equality, faction/domain ownership, exact expected version and supported command fields. The receipt records accepted/rejected game execution after a known ID is processed. Retransmission of the same ID and payload returns its saved receipt; reusing an ID with changed fields is rejected. A rejected precondition is not cached; a truly durable host must additionally record operation/transaction commits.
 
 ## State replication
 

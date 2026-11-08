@@ -8,11 +8,12 @@ As of the first authoritative feature-branch iteration:
 - A command admission gate checking authenticated session/faction/domain, expected revision and duplicate UUIDs.
 - An atomic, version-ordered read-only client DTO replica.
 - Single-threaded independent map-clock scheduling with supported pause/1x/2x/3x and exported clock metadata.
-- A dependency-free .NET 8 console test runner containing focused automated test cases.
+- A bounded cross-thread command queue and owner-thread AuthoritativeSimulationHost pump, awaiting a real Unity/Verse game driver.
+- A dependency-free .NET 8 console test runner; 14/14 focused tests passed on GitHub Actions.
 
 ## Not implemented or not verified
 
-- Not connected to the existing LiteNetLib network transport or authenticated session establishment.
+- Not connected to the existing LiteNetLib network transport or authenticated session establishment. The host provides only the transport-neutral enqueue/pump boundary.
 - No genuine RimWorld 1.6 Unity headless game host or Verse server tick.
 - No client gameplay-tick suppression, object presentation layer or pawn move order wired to Verse.
 - No real game snapshot serializer or change journal, map generation service, stable persisted entity IDs, health/needs, inventory or jobs replication.
