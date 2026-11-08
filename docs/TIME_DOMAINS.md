@@ -33,3 +33,8 @@ The console test project exercises 3x versus 1x, pause isolation, duplicate doma
 ## Domain ID mapping
 
 The original RimWorld map.uniqueID may start at zero; MapDomainIds.FromMapUniqueId maps 0 -> 1. Independent map clocks require a deliberately separate domain identifier, not an assumption that map.uniqueID is already positive. The current single-map adapter uses the vanilla global TickManager.DoSingleTick and is NEVER an example of safe independent multi-map ticking.
+
+
+## Live single-map transport note
+
+Only the opt-in single-map bridge is connected to the experimental TCP queue, and it still uses RimWorld's global TickManager. A networked command's ExpectedStateVersion refers to the server's GAME revision from the snapshot, not its independently incrementing NETWORK delta version. MovePawn allows limited latency of at most 180 game-revision steps and revalidates pawn ownership and walkability; other mutations remain exact-revision gated. This is not a full independent-world-time or causality solution.

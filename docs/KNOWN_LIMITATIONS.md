@@ -9,17 +9,19 @@ As of the second authoritative feature-branch iteration:
 - An atomic, version-ordered read-only client DTO replica.
 - Single-threaded independent map-clock scheduling with supported pause/1x/2x/3x and exported clock metadata.
 - A bounded cross-thread command queue and owner-thread AuthoritativeSimulationHost pump, with a separately compiled, opt-in single-map Verse bridge.
+- An experimental local-only net8/netstandard2.0 TCP transport (bounded frames, caller-provided authentication, snapshot, ordered deltas, command receipts and reconnect) with live socket tests.
+- A thread-safe StatePublicationHub with a bounded delta ring and distinct game versus network revisions.
 - A .NET 8 console test runner that exercises command processing, domain mapping, snapshot-to-delta updates, and client DTO replication; CI status is recorded in docs/BUILD_AND_TEST.md.
 
 ## Not implemented or not verified
 
-- Not connected to the existing LiteNetLib network transport or authenticated session establishment. The host provides only the transport-neutral enqueue/pump boundary.
+- NOT connected to the existing LiteNetLib multiplayer protocol. A local TCP proof is now connectable to the optional Unity host, but credentials are cleartext, listener is loopback-only and authentication is supplied by the embedding application. No remote-production or public server authentication exists.
 - A RimWorldSingleMapDriver with real TickManager.DoSingleTick and Pawn_JobTracker.TryTakeOrderedJob calls now compiles, but there is NO deployed headless Unity host, startup hook, runtime confirmation or playable server.
 - An opt-in Unity tick guard exists for the server-side single-map experiment, but no reliable client gameplay-tick suppression, object presentation layer, or full client-server move order path exists.
 - A minimal real-pawn position projection and full-scan DTO delta generator exist. No complete game snapshot serializer, map generation service, stable persisted entity IDs, health/needs, inventory or jobs replication exists.
 - No persistence for command receipts, world snapshots, whole-world saves, or crash-safe recovery.
 - No server-side global world simulation, faction creation protocol or atomic cross-domain interactions.
-- No verified client reconnect, message acks, deltas resend buffer, compression or interest management.
+- Local DTO reconnect, receipts and bounded delta history have socket-level tests. No in-game reconnect, production acknowledgements, compression, persistent receipt ledger or interest management.
 - Unit tests and original solution tests executed successfully in GitHub Actions; no RimWorld/Unity integration tests executed. The interactive sandbox lacks dotnet and game files.
 - No DLC compatibility tests, load tests, production deployment artifact, Linux/Windows game run or independent client UI test.
 
@@ -45,3 +47,12 @@ Obtain a licensed RimWorld 1.6 runtime, establish a game simulation bootstrap on
 - The opt-in Harmony update hook is not an authenticated server network handshake. Normal game/UI code can mutate state outside tick callbacks; this needs investigation before a client read-only mode can be claimed.
 - The simplified snapshot contains pawn locations and faction IDs only; it is insufficient for client map creation, pawns' jobs, pathfinding, saves, or reconnect.
 - The bridge's source was compiled against references, not tested inside a licensed RimWorld 1.6 game.
+
+
+## Transport and revision safety limits
+
+- The TCP transport binds ONLY to loopback. Credentials are transmitted in cleartext, so do not publish the port or tunnel it to untrusted networks. TLS and real account authentication are future work.
+- TCP protocol client is a DTO replica only; it does not spawn RimWorld Maps/Things or render complete maps.
+- The simulation command gate accepts MovePawn based on a game revision at most 180 steps old. This allows normal ticking in the prototype but does NOT prevent two legitimate move requests arriving out of their original order; per-pawn ordering and causal preconditions are future work.
+- The game driver validates current faction, map, pawn, and walkable destination, but real UI/gameplay side effects remain unaudited.
+- Network-side session admission is only as strong as the caller's ILoopbackAuthenticator. The testing credential is intentionally fake and must never be used outside tests.

@@ -1,6 +1,6 @@
 # Authoritative wire contract — provisional v1
 
-This is a NEW protocol, incompatible with existing Multiplayer protocol 54. The v1 schema lives in Source/AuthoritativeCore/Protocol.cs and ProtocolCodec.cs. There is no transport adapter yet.
+This is a NEW protocol, incompatible with existing Multiplayer protocol 54. The v1 schema lives in Source/AuthoritativeCore/Protocol.cs and ProtocolCodec.cs. A loopback-only experimental TCP transport now exists in Source/AuthoritativeTransport. It is not a production LAN or internet service and does not use the original LiteNetLib protocol.
 
 ## Command
 
@@ -8,12 +8,12 @@ PlayerCommand fields: ProtocolVersion, CommandId (UUID), SessionId (untrusted cl
 
 Current recognized kinds: MovePawn, SetDomainSpeed. The payload is a typed DTO, not a serialized Verse object.
 
-Transport workers may enqueue commands through AuthoritativeSimulationHost.EnqueueCommand, and only its owning-thread Pump executes them. CommandProcessor.Process(authenticatedSessionId, command) is the trust boundary. The transport MUST derive authenticatedSessionId from its authenticated connection, never from the payload. The processor checks protocol v1, nonempty ID, identity equality, faction/domain ownership, exact expected version and supported command fields. The receipt records accepted/rejected game execution after a known ID is processed. Retransmission of the same ID and payload returns its saved receipt; reusing an ID with changed fields is rejected. A rejected precondition is not cached; a truly durable host must additionally record operation/transaction commits.
+Transport workers may enqueue commands through AuthoritativeSimulationHost.EnqueueCommand, and only its owning-thread Pump executes them. CommandProcessor.Process(authenticatedSessionId, command) is the trust boundary. The transport MUST derive authenticatedSessionId from its authenticated connection, never from the payload. The processor checks protocol v1, nonempty ID, identity equality, faction/domain ownership, and supported command fields. It allows MovePawn against a recent game revision (maximum 180 game revision steps behind by default), rejecting future or excessively old revisions; other commands still require an exact game revision. The server-side Verse executor must revalidate every pawn and destination at execution. This is only a prototype freshness policy, not a final solution to old-command reordering. The receipt records accepted/rejected game execution after a known ID is processed. Retransmission of the same ID and payload returns its saved receipt; reusing an ID with changed fields is rejected. A rejected precondition is not cached; a truly durable host must additionally record operation/transaction commits.
 
 ## State replication
 
-WorldSnapshot: monotonically increasing Version and list of ThingState with stable positive IDs, positive DomainId and FactionId, X, Z.
-WorldDelta: BaseVersion, Version and ordered Create/Update/Delete StateChanges. The minimal implementation demands Version = BaseVersion + 1; WorldStateReplicator computes only changed DTO records from authoritative snapshots and increments its own network sequence separately from simulation revisions.
+WorldSnapshot: monotonically increasing network Version, GameStateVersion (independent authoritative simulation revision), and list of ThingState with positive provisional IDs, DomainId, FactionId, X, Z. Commands set ExpectedStateVersion from GameStateVersion rather than network Version.
+WorldDelta: BaseVersion, Version, GameStateVersion and ordered Create/Update/Delete StateChanges. The minimal implementation demands Version = BaseVersion + 1; WorldStateReplicator computes only changed DTO records from authoritative snapshots and increments its own network sequence separately from simulation revisions.
 
 ClientStateReplica.InstallSnapshot constructs a fresh dictionary and swaps only on success, rejecting duplicate IDs. ApplyDelta uses a working dictionary and commits only if the exact base version and all changes are valid. Unknown deletions, updates of non-existent IDs, changes of entity faction/domain, duplicates, and gaps all return NeedsSnapshot without a partial application.
 
@@ -21,11 +21,20 @@ This schema is intentionally far too small to represent actual RimWorld objects,
 
 ## Framing and safety
 
-ProtocolCodec uses System.Text.Json bound to named DTO types only, MaxDepth 16 and disallows unknown JSON members. Command payloads are limited to 16 KiB; individual snapshot/delta payloads are limited to 8 MiB. Compression, fragment checksums, total snapshot budgets, authentication, encryption, rate limiting, reliable sequence/ack messages, anti-replay persistence, and server-side interest management remain TODOs.
+ProtocolCodec uses System.Text.Json bound to named DTO types only, MaxDepth 16 and disallows unknown JSON members. Command payloads are limited to 16 KiB; individual snapshot/delta payloads are limited to 8 MiB. Compression, fragment checksums, total snapshot budgets, TLS, internet-safe authentication, rate limiting, durable anti-replay receipts, interest management and production-grade reconnect remain TODOs.
 
-A wire snapshot/reconnect flow has not been implemented. During resync the client must buffer or reject incompatible deltas and atomically install an authoritative snapshot before resuming. No network packet handler should feed this wire protocol into existing lockstep ScheduledCommand methods.
+A limited wire snapshot/reconnect test flow has been implemented for loopback TCP and DTOs, but it cannot reconstruct a RimWorld map or survive a real server crash. During resync the client must buffer or reject incompatible deltas and atomically install an authoritative snapshot before resuming. No network packet handler should feed this wire protocol into existing lockstep ScheduledCommand methods.
 
 
 ## Current RimWorld mapping
 
 A dedicated net48 RimWorldSingleMapDriver can project spawned pawns into ThingState and apply real Verse GoTo jobs. It maps RimWorld map.uniqueID 0 to network DomainId 1 (and map N to domain N+1) to avoid falsely rejecting map zero. Current Thing IDs use thingIDNumber; these are provisional references, NOT verified durable network identities. No real client RimWorld objects are generated by ClientStateReplica, no image of the full map is transmitted, and the new protocol is not registered with LiteNetLib yet.
+
+
+## Experimental TCP framing and authentication
+
+See docs/LOOPBACK_TRANSPORT.md. The prototype listens only on IPAddress.Loopback (127.0.0.1), uses 4-byte big-endian total frame size, 1-byte message kind, typed bounded payloads and a caller-supplied ILoopbackAuthenticator. Credentials are transported without encryption and must NEVER be exposed to remote networking. The server derives trusted session ID from the authenticator, never from PlayerCommand.SessionId.
+
+A session receives an initial snapshot, can submit a command and receive an idempotent command receipt, and can Poll for all retained deltas. If the history window is missed, a new snapshot is returned. Poll always ends with EndPoll. The network worker only calls AuthoritativeSimulationHost.EnqueueCommand; real Verse callbacks are restricted to the Unity host thread.
+
+This is a proof of packet sequencing, basic session-bound admission and DTO resync, not cryptographic transport security, a production client, or full game replication.

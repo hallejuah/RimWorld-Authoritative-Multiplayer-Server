@@ -19,6 +19,13 @@ The test runner exits nonzero on failure and uses no mocking library. Its small 
 For upstream baseline (may require restoring dependencies and platform-specific build tools):
 - dotnet build Source/Multiplayer.sln -c Release
 
+### Local transport and socket integration
+
+- dotnet build Source/AuthoritativeTransport/AuthoritativeTransport.csproj -c Release
+- dotnet run --project Source/AuthoritativeTransport.Tests/AuthoritativeTransport.Tests.csproj -c Release
+
+The experimental TCP listener only binds localhost and MUST NOT be exposed to LAN/WAN. See docs/LOOPBACK_TRANSPORT.md.
+
 ## What this environment verified
 
 GitHub files, master revision, project references, LICENSE files and C# sources were read through the connected GitHub API. GitHub writes were used to create a dedicated feature branch and commits.
@@ -56,3 +63,12 @@ No benchmark, Docker-based RimWorld runtime, working game networking, or full sa
 - The bridge calls real RimWorld API entry points, but the CI references are not an installed or running game. No one has executed a licensed RimWorld gameplay session in this environment.
 
 For an in-game proof, follow docs/GAME_INTEGRATION_PROBE.md. Do not mark the first vertical slice accepted until map loading, ticking, pawn job execution, client rendering WITHOUT local game ticks, and reconnect are observed with an actual game process.
+
+
+## Third iteration — real TCP tests
+
+An additional independently compiled net8/netstandard2.0 transport project provides bounded length-prefixed loopback-only frames, application-supplied authentication, snapshot on connect, command receipt, delta polling and snapshot-based resync on an expired history window.
+
+GitHub Actions successfully executed the 7 socket-level tests on Source/AuthoritativeTransport.Tests, including initial handshake, authenticated command queue delivery on the simulation thread, fake-pawn location replication, duplicate retry, reconnect snapshot, wrong-credential/session/faction rejection, state-history expiry and invalid frame limits. The tests use real TCP sockets but a fake game driver, NOT a licensed RimWorld/Unity process. The source compiler also checks the Verse bridge project against RimWorld 1.6 reference assemblies.
+
+For current status see the GitHub Actions run linked from pull request #1. To test against a real loaded game, see docs/GAME_INTEGRATION_PROBE.md.

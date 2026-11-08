@@ -4,17 +4,17 @@ Status: CI-built and unit-tested core plus a source-compiled RimWorld 1.6 Verse 
 
 ## Hard boundary
 
-The original multiplayer stays in lockstep mode with protocol 54. New code lives in Source/AuthoritativeCore, with a separately multi-targeted net8/netstandard2.0 project and protocol v1. It is NOT wired into the original network handlers, game bootstrap or save system. Activating it does not modify existing behavior.
+The original multiplayer stays in lockstep mode with protocol 54. New code lives in separately compiled AuthoritativeCore, AuthoritativeTransport and AuthoritativeRimWorldBridge projects. Protocol v1 does NOT use the original network handlers or automatic game bootstrap. The optional Unity host and local-only TCP bridge must be explicitly activated and do not modify lockstep by default.
 
 Proposed production subsystems:
 
 1. Unity/Verse SimulationHost: must own Current.Game, Find, maps, game object IDs, RNG, Scribe saves and the sole game simulation thread. The transport-neutral AuthoritativeSimulationHost is now implemented: it enqueues transport commands with bounded backpressure, drains a limited number on the owner thread, dispatches game-tick callbacks and requests a consistent snapshot. An opt-in RimWorldSingleMapDriver is now compiled against RimWorld 1.6 reference assemblies in Source/AuthoritativeRimWorldBridge. It invokes actual TickManager.DoSingleTick and TryTakeOrderedJob in a loaded paused single-map Unity game, but has NEVER been executed with licensed game files in this environment.
 2. SimulationDomainManager (initial implementation): a single-threaded 60-base-tick scheduler, per-domain tick/speed/pause, export/restore of clock metadata. Implemented in Source/AuthoritativeCore/SimulationDomainManager.cs; a provisional single-map Verse callback is implemented but has no proven runtime startup.
 3. CommandProcessor (initial implementation): validates authenticated connection identity, declared faction, owned domain, protocol, state revision and unique command ID. It enforces owning-thread execution and invokes an ICommandExecutor, implemented by the single-map Verse bridge for the MovePawn command only. A failing executor must not partially mutate the game.
-4. WorldStateReplicator (initial implementation): compares bounded DTO snapshots, emits ordered Create/Update/Delete changes and monotonically increasing network revisions. There is no dirty tracking, per-subscriber interest filtering, persistence, acknowledgement channel or complete map serialization yet.
+4. WorldStateReplicator + StatePublicationHub (initial implementation): compare DTO snapshots, emit ordered changes and maintain bounded versioned history under a lock so network workers only read immutable copies. No dirty tracking, interest filtering, persistence or full map serialization.
 5. ClientStateReplica (initial implementation): applies typed snapshots and consecutive deltas into an atomic read-only DTO store. This is not a RimWorld Thing presentation bridge.
 6. Durable SaveCoordinator (pending): save all maps/world, clocks, authoritative net IDs, outstanding operations and command receipts consistently; temp file and recovery slot rotation.
-7. AuthoritativeTransport (pending): authentication, bounded messages, session ownership, reliable sequence delivery, acks, resync requests and backpressure.
+7. AuthoritativeTransport (experimental loopback-only): bounded TCP frames, caller-provided local credential validation, network-session identity, initial snapshot, delta polling/resync and command receipts. It is not remotely secure: no TLS, no persistent identities or anti-replay ledger, no production deployment.
 
 ## Non-negotiable invariants
 
@@ -44,3 +44,10 @@ E. Only after the single-pawn vertical slice is proven, expand to world events, 
 ## Integration experiment status
 
 Source/AuthoritativeRimWorldBridge builds separately and is not installed by the original Multiplayer mod. SingleMapUnityTickLoop.Start is an explicit opt-in activation; it patches the vanilla TickManagerUpdate and pumps its host from Root_Play.Update. No invocation or authenticated network handshake is wired up. It assumes the vanilla game is paused, exactly one map is loaded, and the caller owns a Unity main-thread context. This preliminary control needs real in-game tests and a full audit of all other gameplay mutation paths. See docs/GAME_INTEGRATION_PROBE.md.
+
+
+## Third iteration integration boundary
+
+The optional LoadedSingleMapHost.StartLocalTransport opens a loopback-only TCP endpoint after SingleMapUnityTickLoop.Start. Its server workers enqueue commands into AuthoritativeSimulationHost; Unity's Root_Play.Update calls Pump and publishes a fresh snapshot/delta into StatePublicationHub. The only client currently provided is a DTO-only test/reference client. On stopping the Unity host, the local listener closes and pending command receipts are rejected.
+
+This does NOT make the vanilla multiplayer UI a read-only authoritative client and does NOT solve headless Unity startup, full map state, arbitrary modded jobs, real save/reload or independent world/map timelines.

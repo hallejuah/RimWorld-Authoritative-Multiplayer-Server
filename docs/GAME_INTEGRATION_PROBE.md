@@ -29,10 +29,25 @@ Collect real Unity/RimWorld logs, tick counter and pawn positions, evidence of o
 
 ## Known blockers that this source does not overcome
 
-- There is no remote transport handler for the authoritative protocol and no authenticated production session policy.
+- There is a loopback-only TCP prototype and a caller-provided ILoopbackAuthenticator; there is still no TLS-protected remote transport, authenticated production session policy or public server.
 - There is no deployed headless Unity bootstrap or automatic activation path. The bridge is currently opt-in library code only.
 - This first single-map driver calls global TickManager.DoSingleTick; it cannot implement two independent map clocks.
 - There is no client presentation bridge that can load the snapshot into Verse maps/Thing objects.
 - There is no full Scribe save coordinator, persistent command UUID journal, stable network entity ID registry or cross-domain transaction policy.
 - Client UI and other mods may cause gameplay side effects outside TickManagerUpdate; suppressing the tick method alone does not prove read-only clients.
 - Runtime availability of proprietary RimWorld assemblies and all bridge dependencies has not been verified; only reference-based compilation exists.
+
+
+## Optional loopback transport probe
+
+Once the game is loaded, one map is paused, and LoadedSingleMapHost.Attach plus SingleMapUnityTickLoop.Start were called on Unity's main thread, the embedding experimental mod may call:
+
+```csharp
+// Supply a secure LOCAL test credential provider; no provider is shipped.
+// Do not use the fake token from Source/AuthoritativeTransport.Tests.
+int port = loadedHost.StartLocalTransport(localAuthenticator);
+```
+
+A separate local process can then call LoopbackTransportClient.ConnectAsync(port, credential), consume the initial DTO snapshot, issue PlayerCommand.MovePawn with ExpectedStateVersion = client.Replica.GameStateVersion, and PollAsync to apply deltas. The Unity thread must remain pumping. Run the client asynchronously; never block Unity waiting for command receipts. Stop with SingleMapUnityTickLoop.Stop, which closes the transport.
+
+This remains a manual integration plan and an optional library hook. There is NO built/deployed game mod installer, no shipped production authenticator and no end-to-end game test report. Do not expose or port-forward this cleartext loopback service.
