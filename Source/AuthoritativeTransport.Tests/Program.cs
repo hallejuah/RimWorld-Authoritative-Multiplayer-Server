@@ -26,7 +26,7 @@ Console.WriteLine($"{tests.Length - fails}/{tests.Length} transport tests passed
 return fails == 0 ? 0 : 1;
 
 static T Wait<T>(Task<T> task) => task.WaitAsync(TimeSpan.FromSeconds(8)).GetAwaiter().GetResult();
-static void Wait(Task task) => task.WaitAsync(TimeSpan.FromSeconds(8)).GetAwaiter().GetResult();
+static void WaitDone(Task task) => task.WaitAsync(TimeSpan.FromSeconds(8)).GetAwaiter().GetResult();
 static void Check(bool condition, string message)
 {
     if (!condition) throw new Exception(message);
@@ -132,7 +132,7 @@ static void BadFrames()
     using var partial = new MemoryStream(new byte[] { 0, 0 });
     Throws<EndOfStreamException>(() => Wait(WireFrameCodec.ReadAsync(partial)));
     using var outbound = new MemoryStream();
-    Throws<InvalidDataException>(() => Wait(WireFrameCodec.WriteAsync(outbound,
+    Throws<InvalidDataException>(() => WaitDone(WireFrameCodec.WriteAsync(outbound,
         WireFrameKind.Command, new byte[AuthoritativeProtocol.MaxCommandBytes + 1])));
 }
 
