@@ -11,12 +11,15 @@ namespace Multiplayer.Authoritative.RimWorldBridge;
 public sealed class GameComponent_AuthoritativeIdentity : GameComponent
 {
     private readonly Game ownerGame;
-    private readonly int ownerThread = Thread.CurrentThread.ManagedThreadId;
+    // Game construction/loading may occur before the simulation owner exists.
+    private int? ownerThread;
+    private EntityIdentityCheckpoint? pendingCheckpoint;
     private ServerEntityRegistry? registry;
     private ServerEntityBindings<Thing>? bindings;
     private string? savedWorldId;
     private string? savedCheckpoint;
     private string? loadFault;
+    private bool identityRequired;
 
     public GameComponent_AuthoritativeIdentity(Game game) =>
         ownerGame = game ?? throw new ArgumentNullException(nameof(game));
@@ -49,18 +52,35 @@ public sealed class GameComponent_AuthoritativeIdentity : GameComponent
 
     public override void ExposeData()
     {
-        EnsureThread();
+        // Write the adoption marker BEFORE identity capture can fail. If the
+        // enclosing saver catches a component exception and still writes a save,
+        // missing fields must not be mistaken for a clean legacy world on reload.
+        if (Scribe.mode == LoadSaveMode.Saving) identityRequired = true;
+        Scribe_Values.Look(ref identityRequired, "authoritativeIdentityRequired", false);
+
         if (Scribe.mode == LoadSaveMode.Saving)
         {
-            EnsureRegistry();
-            // Absence from a map is NOT deletion: inventory, caravans and
-            // despawned Things keep their identities. Only actual destruction
-            // of a bound server object retires it here.
-            foreach (var thing in bindings!.CaptureBoundObjects())
-                if (thing.Destroyed) bindings.Retire(thing);
-            savedWorldId = registry!.WorldId.ToString("D");
-            savedCheckpoint = Convert.ToBase64String(
-                EntityIdentityCheckpointCodec.Encode(registry.CaptureCheckpoint()));
+            if (loadFault is not null)
+                throw new InvalidOperationException("Authoritative identity restore failed: " + loadFault);
+            EntityIdentityCheckpoint checkpoint;
+            if (registry is not null)
+            {
+                EnsureThread();
+                // Despawn/inventory is NOT deletion. Only genuinely destroyed
+                // bound server objects retire, and only on the owning thread.
+                foreach (var thing in bindings!.CaptureBoundObjects())
+                    if (thing.Destroyed) bindings.Retire(thing);
+                checkpoint = registry.CaptureCheckpoint();
+            }
+            else
+            {
+                // Saving before the first host session must not bind the future
+                // runtime registry to a Scribe/loading worker thread.
+                checkpoint = pendingCheckpoint ?? new ServerEntityRegistry(Guid.NewGuid()).CaptureCheckpoint();
+                pendingCheckpoint = checkpoint;
+            }
+            savedWorldId = checkpoint.WorldId.ToString("D");
+            savedCheckpoint = Convert.ToBase64String(EntityIdentityCheckpointCodec.Encode(checkpoint));
         }
 
         Scribe_Values.Look(ref savedWorldId, "authoritativeWorldId");
@@ -70,7 +90,7 @@ public sealed class GameComponent_AuthoritativeIdentity : GameComponent
             RestoreMetadata();
         if (Scribe.mode == LoadSaveMode.PostLoadInit)
         {
-            // The validated registry owns the state now. Do not retain a large
+            // The validated checkpoint owns the state now. Do not retain a large
             // duplicate Base64 payload for the whole session.
             savedCheckpoint = null;
             savedWorldId = null;
@@ -81,26 +101,28 @@ public sealed class GameComponent_AuthoritativeIdentity : GameComponent
     {
         registry = null;
         bindings = null;
+        pendingCheckpoint = null;
+        ownerThread = null;
         loadFault = null;
-        // Legacy saves without BOTH fields adopt an identity on first server
-        // use/save. Empty, half-present or corrupt fields must NOT regenerate IDs.
-        if (savedWorldId is null && savedCheckpoint is null) return;
+        // Only unmarked legacy saves without BOTH fields may adopt an identity.
+        // Marked, empty, half-present or corrupt data must NOT regenerate IDs.
+        if (!identityRequired && savedWorldId is null && savedCheckpoint is null) return;
         try
         {
             if (savedWorldId is null || savedCheckpoint is null ||
                 !Guid.TryParseExact(savedWorldId, "D", out var expectedWorld) || expectedWorld == Guid.Empty ||
                 savedCheckpoint.Length > ((EntityIdentityFormat.MaxBytes + 2) / 3) * 4)
                 throw new InvalidDataException("Missing or invalid authoritative identity metadata");
-            var checkpoint = EntityIdentityCheckpointCodec.Decode(
+            // Decode on the loading thread into an immutable checkpoint only.
+            // The live, thread-affine registry is constructed on first host use.
+            pendingCheckpoint = EntityIdentityCheckpointCodec.Decode(
                 Convert.FromBase64String(savedCheckpoint), expectedWorld);
-            var restored = ServerEntityRegistry.Restore(checkpoint, expectedWorld);
-            registry = restored;
-            bindings = new ServerEntityBindings<Thing>(restored);
         }
         catch (Exception e) when (e is InvalidDataException || e is FormatException || e is ArgumentException)
         {
-            // Keep the game inspectable, but deny authoritative capture, commands
-            // and saving. Never silently replace the corrupt registry with a new one.
+            // Keep the game inspectable, but deny authoritative capture and
+            // commands. Identity serialization will throw on save, with the
+            // required marker already written. Never silently regenerate IDs.
             loadFault = e.Message;
             Log.Error("[Authoritative] Entity identity metadata is invalid; server access is disabled: " + loadFault);
         }
@@ -112,7 +134,10 @@ public sealed class GameComponent_AuthoritativeIdentity : GameComponent
         if (loadFault is not null)
             throw new InvalidOperationException("Authoritative identity restore failed: " + loadFault);
         if (registry is not null) return;
-        registry = new ServerEntityRegistry(Guid.NewGuid());
+        registry = pendingCheckpoint is null
+            ? new ServerEntityRegistry(Guid.NewGuid())
+            : ServerEntityRegistry.Restore(pendingCheckpoint, pendingCheckpoint.WorldId);
+        pendingCheckpoint = null;
         bindings = new ServerEntityBindings<Thing>(registry);
     }
 
@@ -127,14 +152,17 @@ public sealed class GameComponent_AuthoritativeIdentity : GameComponent
 
     private void EnsureCurrentGame()
     {
+        if (!ReferenceEquals(Current.Game, ownerGame) || Current.ProgramState != ProgramState.Playing)
+            throw new InvalidOperationException("Identity component requires its loaded server game");
+        // Trusted game-thread adapters establish ownership, not the constructor
+        // or an asynchronous save loader. Later calls must stay on that thread.
+        if (ownerThread is null) ownerThread = Thread.CurrentThread.ManagedThreadId;
         EnsureThread();
-        if (!ReferenceEquals(Current.Game, ownerGame))
-            throw new InvalidOperationException("Identity component belongs to another game");
     }
 
     private void EnsureThread()
     {
-        if (Thread.CurrentThread.ManagedThreadId != ownerThread)
+        if (ownerThread is null || Thread.CurrentThread.ManagedThreadId != ownerThread.Value)
             throw new InvalidOperationException("Scribe identity access requires the Unity owner thread");
     }
 }

@@ -14,6 +14,7 @@ internal static class EntityIdentityTests
         ("Runtime bindings reject aliased and mutated server references", BindingSafety),
         ("Runtime objects rebind after reload without changing IDs", BindingRestoration),
         ("Entity identity state stays on its simulation thread", ThreadAffinity),
+        ("Immutable identity checkpoints hand off from loader to simulation", CheckpointHandoff),
         ("Identity checkpoints reject truncation and corruption", CodecCorruption),
         ("Identity codec validates structure even with a valid checksum", CodecStructure),
         ("Identity checkpoints are canonical defensive copies", DefensiveCopies),
@@ -56,6 +57,7 @@ internal static class EntityIdentityTests
         var restored = ServerEntityRegistry.Restore(EntityIdentityCheckpointCodec.Decode(bytes, r.WorldId), r.WorldId);
         Check(restored.WorldId == r.WorldId && restored.GetOrCreateId("Steel_9876") == item &&
               restored.GetOrCreateId("Pawn_1357") == pawn, "load order changed IDs");
+        Check(restored.GetOrCreateId("NewThing_10000") == 3, "allocator high-water mark lost");
         Check(restored.GetOrCreateId("NewThing_10000") == 3, "allocator high-water mark lost");
     }
 
@@ -174,6 +176,21 @@ internal static class EntityIdentityTests
             Check(error is InvalidOperationException, "cross-thread identity access succeeded");
         }
         Check(r.Count == 1 && r.TryGetId("a", out _), "worker partially mutated registry");
+    }
+
+    private static void CheckpointHandoff()
+    {
+        var r = NewRegistry();
+        r.GetOrCreateId("loaded-pawn");
+        var bytes = EntityIdentityCheckpointCodec.Encode(r.CaptureCheckpoint());
+        var world = r.WorldId;
+        var checkpoint = Task.Run(() => EntityIdentityCheckpointCodec.Decode(bytes, world))
+            .GetAwaiter().GetResult();
+        // Restore on the simulation thread, not the worker that parsed Scribe data.
+        var runtime = ServerEntityRegistry.Restore(checkpoint, world);
+        var bindings = new ServerEntityBindings<object>(runtime);
+        Check(bindings.GetOrAssignId("loaded-pawn", new object()) == 1, "loading-thread affinity leaked");
+        Check(runtime.GetOrCreateId("new-pawn") == 2, "loader lost allocator state");
     }
 
     private static void CodecCorruption()
