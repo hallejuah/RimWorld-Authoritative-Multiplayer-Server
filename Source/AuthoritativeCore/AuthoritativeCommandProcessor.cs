@@ -21,10 +21,13 @@ public sealed class AuthoritativeCommandProcessor(
     Func<long> currentStateVersion,
     int maximumRecordedCommands = 100_000)
 {
+    private readonly int ownerThread = Environment.CurrentManagedThreadId;
     private readonly Dictionary<(string SessionId, Guid Id), (PlayerCommand Command, CommandReceipt Receipt)> receipts = new();
 
     public CommandReceipt Process(string authenticatedSessionId, PlayerCommand command)
     {
+        if (Environment.CurrentManagedThreadId != ownerThread)
+            throw new InvalidOperationException("Command processing must run on the simulation thread");
         ArgumentNullException.ThrowIfNull(authenticatedSessionId);
         ArgumentNullException.ThrowIfNull(command);
 

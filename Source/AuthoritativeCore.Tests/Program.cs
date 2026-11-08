@@ -12,6 +12,7 @@ var cases = new (string Name, Action Run)[]
     ("Typed protocol roundtrips and limits", ProtocolRoundtrip),
     ("Domains tick independently and restore clocks", DomainClocks),
     ("Domain callbacks stay on one thread", ThreadAffinity),
+    ("Commands run only on their owning simulation thread", CommandThreadAffinity),
     ("A failed game tick does not advance its clock", FailedTick)
 };
 
@@ -176,6 +177,15 @@ static void ThreadAffinity()
     MustThrow<InvalidOperationException>(() =>
         Task.Run(() => manager.Advance(TimeSpan.FromSeconds(1), (_, _) => { }))
             .GetAwaiter().GetResult());
+}
+
+static void CommandThreadAffinity()
+{
+    var executor = new TestExecutor();
+    var processor = Processor(executor);
+    MustThrow<InvalidOperationException>(() =>
+        Task.Run(() => processor.Process("alice", Move())).GetAwaiter().GetResult());
+    Check(executor.Applied == 0, "network thread executed gameplay");
 }
 
 static void FailedTick()
