@@ -200,10 +200,10 @@ static void HostPipeline()
     // Simulate arrival from a transport worker, not the game thread.
     Task<CommandReceipt>? receiptTask = null;
     Task.Run(() => { receiptTask = host.EnqueueCommand("alice", Move()); }).GetAwaiter().GetResult();
-    Check(receiptTask is not null, "network worker did not enqueue");
-    Check(!receiptTask.IsCompleted && host.QueuedCommandCount == 1, "command executed on worker");
+    var pending = receiptTask ?? throw new Exception("network worker did not enqueue");
+    Check(!pending.IsCompleted && host.QueuedCommandCount == 1, "command executed on worker");
     host.Pump(TimeSpan.FromSeconds(1));
-    Check(receiptTask.GetAwaiter().GetResult().Accepted, "command rejected");
+    Check(pending.GetAwaiter().GetResult().Accepted, "command rejected");
     Check(driver.Applied == 1 && driver.Ticks == 60 && host.QueuedCommandCount == 0,
         "incorrect host dispatch");
     Check(host.CaptureSnapshot().Version == 7, "snapshot driver not called");
