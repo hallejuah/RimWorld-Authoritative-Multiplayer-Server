@@ -122,6 +122,24 @@ public static class VerseWorldViewCapture
                 AddDirect(holder, slot, container);
             }
 
+            void CheckAdvertised(IThingHolder holder, bool allowTrackedSlots)
+            {
+                var advertised = new List<IThingHolder>();
+                holder.GetChildHolders(advertised);
+                if (advertised.Count > EntityGraphFormat.MaxChildrenPerHolder)
+                    throw new InvalidOperationException("Too many advertised server holders");
+                foreach (var childHolder in advertised)
+                {
+                    if (ReferenceEquals(holder, childHolder))
+                        throw new InvalidOperationException("Holder advertises itself as its own child");
+                    // Nested Thing holders are visited as their own graph entities.
+                    if ((allowTrackedSlots && known.Any(h => ReferenceEquals(h, childHolder))) ||
+                        (childHolder is Thing childThing && children.Contains(childThing))) continue;
+                    throw new NotSupportedException("An additional holder needs an explicit graph adapter: " +
+                        childHolder?.GetType().FullName);
+                }
+            }
+
             if (owner is Pawn pawn)
             {
                 AddTracker(pawn.inventory, EntityHolderSlot.Inventory);
@@ -140,20 +158,11 @@ public static class VerseWorldViewCapture
                 }
                 else if (direct is not null)
                     AddDirect(root, EntityHolderSlot.Contents, direct);
-
-                var advertised = new List<IThingHolder>();
-                root.GetChildHolders(advertised);
-                if (advertised.Count > EntityGraphFormat.MaxChildrenPerHolder)
-                    throw new InvalidOperationException("Too many advertised server holders");
-                foreach (var childHolder in advertised)
-                {
-                    // Nested Thing holders are visited as their own graph entities.
-                    if (known.Any(h => ReferenceEquals(h, childHolder)) ||
-                        (childHolder is Thing childThing && children.Contains(childThing))) continue;
-                    throw new NotSupportedException("An additional holder needs an explicit graph adapter: " +
-                        childHolder?.GetType().FullName);
-                }
+                CheckAdvertised(root, true);
             }
+            // Inspect the trackers themselves too: accepting a known tracker
+            // must not silently skip a mod-added nested holder below it.
+            foreach (var holder in known) CheckAdvertised(holder, false);
 
             // Do not silently discard inventory stored by a mod's ThingComp.
             // Such component-only holders need explicit slot semantics later.
