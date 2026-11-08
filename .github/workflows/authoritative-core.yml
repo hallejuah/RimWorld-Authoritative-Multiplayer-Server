@@ -1,0 +1,24 @@
+name: Authoritative core checks
+
+on:
+  push:
+    branches:
+      - 'feature/authoritative-*'
+  pull_request:
+    paths:
+      - 'Source/AuthoritativeCore/**'
+      - 'Source/AuthoritativeCore.Tests/**'
+      - '.github/workflows/authoritative-core.yml'
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build isolated authoritative core
+        run: dotnet build Source/AuthoritativeCore/AuthoritativeCore.csproj -c Release --warnaserror
+      - name: Execute focused authoritative tests
+        run: dotnet run --project Source/AuthoritativeCore.Tests/AuthoritativeCore.Tests.csproj -c Release
