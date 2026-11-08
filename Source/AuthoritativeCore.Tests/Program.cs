@@ -16,6 +16,8 @@ var cases = new (string Name, Action Run)[]
     ("Host queues commands and ticks on simulation thread", HostPipeline),
     ("Host rejects command queue overload", HostBackpressure),
     ("Zero-based RimWorld map IDs are mapped to positive domains", MapDomainMapping),
+    ("Replicator publishes ordered pawn changes", ReplicatorDeltas),
+    ("Replicator rejects duplicate or migrated identities", ReplicatorSafety),
     ("A failed game tick does not advance its clock", FailedTick)
 };
 
@@ -210,6 +212,47 @@ static void HostPipeline()
     Check(host.CaptureSnapshot().Version == 7, "snapshot driver not called");
     MustThrow<InvalidOperationException>(() =>
         Task.Run(() => host.CaptureSnapshot()).GetAwaiter().GetResult());
+}
+
+static void ReplicatorDeltas()
+{
+    var source = new ThingState(100, 1, 5, 2, 3);
+    var journal = new WorldStateReplicator();
+    var baseline = journal.Start(new WorldSnapshot(10, [source]));
+    var client = new ClientStateReplica();
+    Check(baseline.Version == 0 && client.InstallSnapshot(baseline) == ReplicaApplyResult.Applied,
+        "replication baseline");
+
+    var moved = source with { X = 8, Z = 9 };
+    var created = new ThingState(101, 1, 5, 6, 7);
+    var change = journal.CaptureChanges(new WorldSnapshot(14, [created, moved]));
+    Check(change is not null && change.Version == 1 && change.BaseVersion == 0 &&
+        change.Changes.Count == 2, "bad ordered delta");
+    Check(client.ApplyDelta(ProtocolCodec.DecodeDelta(ProtocolCodec.EncodeDelta(change))) ==
+        ReplicaApplyResult.Applied, "wire delta not applied");
+    Check(client.Things[100].X == 8 && client.Things.ContainsKey(101), "replica mismatch");
+
+    Check(journal.CaptureChanges(new WorldSnapshot(15, [created, moved])) is null, "spurious delta");
+    Check(journal.Version == 1, "empty delta advanced revision");
+    var removed = journal.CaptureChanges(new WorldSnapshot(16, [moved]));
+    Check(removed is not null && removed.Version == 2, "deletion missing");
+    Check(client.ApplyDelta(removed) == ReplicaApplyResult.Applied &&
+        !client.Things.ContainsKey(101), "removed object persisted");
+}
+
+static void ReplicatorSafety()
+{
+    var journal = new WorldStateReplicator();
+    var a = new ThingState(100, 1, 5, 2, 3);
+    journal.Start(new WorldSnapshot(1, [a]));
+    MustThrow<ArgumentException>(() =>
+        journal.CaptureChanges(new WorldSnapshot(2, [a, a])));
+    MustThrow<InvalidOperationException>(() =>
+        journal.CaptureChanges(new WorldSnapshot(2, [a with { DomainId = 2 }])));
+    MustThrow<InvalidOperationException>(() =>
+        journal.CaptureChanges(new WorldSnapshot(0, [a])));
+    Check(journal.Version == 0, "invalid state changed published version");
+    Check(journal.CaptureChanges(new WorldSnapshot(3, [a])) is null, "invalid state was committed");
 }
 
 static void MapDomainMapping()
