@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <packageId>hallejuah.authoritativeprobe</packageId>
+  <name>Authoritative Server Probe (Experimental)</name>
+  <author>RimWorld Authoritative Multiplayer Server contributors</author>
+  <supportedVersions>
+    <li>1.6</li>
+  </supportedVersions>
+  <description>
+Experimental developer-only local authoritative simulation probe.
+NOT a playable multiplayer mod or dedicated server. Single loaded map only.
+Requires a separate test mod profile and an explicit Start click in mod settings.
+Do not enable alongside rwmt.Multiplayer. Do not expose the loopback TCP port.
+  </description>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony</displayName>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+  </loadAfter>
+</ModMetaData>

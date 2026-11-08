@@ -1,0 +1,84 @@
+# Known limitations and acceptance status
+
+As of the second authoritative feature-branch iteration:
+
+## Implemented source components
+
+- A multi-targeted net8/netstandard2.0 AuthoritativeCore assembly with typed v1 protocol and size-limited JSON codec.
+- A command admission gate checking authenticated session/faction/domain, expected revision and duplicate UUIDs.
+- An atomic, version-ordered read-only client DTO replica.
+- Single-threaded independent map-clock scheduling with supported pause/1x/2x/3x and exported clock metadata.
+- A bounded cross-thread command queue and owner-thread AuthoritativeSimulationHost pump, with a separately compiled, opt-in single-map Verse bridge.
+- An experimental local-only net8/netstandard2.0 TCP transport (bounded frames, caller-provided authentication, snapshot, ordered deltas, command receipts and reconnect) with live socket tests.
+- A thread-safe StatePublicationHub with a bounded delta ring and distinct game versus network revisions.
+- A .NET 8 console test runner that exercises command processing, domain mapping, snapshot-to-delta updates, and client DTO replication; CI status is recorded in docs/BUILD_AND_TEST.md.
+
+## Not implemented or not verified
+
+- NOT connected to the existing LiteNetLib multiplayer protocol. A local TCP proof is now connectable to the optional Unity host, but credentials are cleartext, listener is loopback-only and authentication is supplied by the embedding application. No remote-production or public server authentication exists.
+- A RimWorldSingleMapDriver with real TickManager.DoSingleTick and Pawn_JobTracker.TryTakeOrderedJob calls now compiles, but there is NO deployed headless Unity host, startup hook, runtime confirmation or playable server.
+- An opt-in Unity tick guard exists for the server-side single-map experiment, but no reliable client gameplay-tick suppression, object presentation layer, or full client-server move order path exists.
+- A minimal real-pawn position projection and full-scan DTO delta generator exist. No complete game snapshot serializer, map generation service, stable persisted entity IDs, health/needs, inventory or jobs replication exists.
+- No persistence for command receipts, world snapshots, whole-world saves, or crash-safe recovery.
+- No server-side global world simulation, faction creation protocol or atomic cross-domain interactions.
+- Local DTO reconnect, receipts and bounded delta history have socket-level tests. No in-game reconnect, production acknowledgements, compression, persistent receipt ledger or interest management.
+- Unit tests and original solution tests executed successfully in GitHub Actions; no RimWorld/Unity integration tests executed. The interactive sandbox lacks dotnet and game files.
+- No DLC compatibility tests, load tests, production deployment artifact, Linux/Windows game run or independent client UI test.
+
+## Risks
+
+1. Verse global/static state, Unity main-thread requirements and map context switching complicate server game execution.
+2. Scribe XML world saves are not equivalent to a minimal typed network snapshot.
+3. Client Unity UI may invoke game logic outside the normal TickManager tick patch, so merely skipping TickPatch is not sufficient.
+4. Arbitrary cross-time transactions may cause duplication and causal paradoxes; these must remain blocked until a real coordinator exists.
+5. The bounded in-memory deduplication ledger is not safe across restarts, and cannot be used as production anti-replay storage.
+6. Version numbers are a minimal ordering mechanism, not a full per-entity causal history.
+7. The current 8 MiB message cap is a bound, not full fragmentation, compression or resource-exhaustion protection.
+
+## Next required acceptance gate
+
+Obtain a licensed RimWorld 1.6 runtime, establish a game simulation bootstrap on a Unity thread, and prove ONE pawn moves from a genuine server-side command while a client displays the change without executing any authoritative local gameplay tick. Only then can the Stage 1 gameplay criterion be marked complete.
+
+
+## Second-iteration safety notes
+
+- The Verse bridge requires one loaded map and paused vanilla time. It maps map.uniqueID N to network DomainId N+1.
+- It must never be considered a general-purpose independent map-time implementation: DoSingleTick advances the global RimWorld world.
+- The opt-in Harmony update hook is not an authenticated server network handshake. Normal game/UI code can mutate state outside tick callbacks; this needs investigation before a client read-only mode can be claimed.
+- The simplified snapshot contains pawn locations and faction IDs only; it is insufficient for client map creation, pawns' jobs, pathfinding, saves, or reconnect.
+- The bridge's source was compiled against references, not tested inside a licensed RimWorld 1.6 game.
+
+
+## Transport and revision safety limits
+
+- The TCP transport binds ONLY to loopback. Credentials are transmitted in cleartext, so do not publish the port or tunnel it to untrusted networks. TLS and real account authentication are future work.
+- TCP protocol client is a DTO replica only; it does not spawn RimWorld Maps/Things or render complete maps.
+- The simulation command gate accepts MovePawn based on a game revision at most 180 steps old. This allows normal ticking in the prototype but does NOT prevent two legitimate move requests arriving out of their original order; per-pawn ordering and causal preconditions are future work.
+- The game driver validates current faction, map, pawn, and walkable destination, but real UI/gameplay side effects remain unaudited.
+- Network-side session admission is only as strong as the caller's ILoopbackAuthenticator. The testing credential is intentionally fake and must never be used outside tests.
+
+
+## Fourth iteration — optional mod launch surface (not game-tested)
+
+Source/AuthoritativeProbeMod is a separately compiled net48 Verse.Mod wrapper with opt-in mod settings controls to attach a one-map authoritative host and start the loopback-only transport. Source/AuthoritativeProbeClient is a standalone net8 read-only pawn DTO / single move CLI. scripts/package-authoritative-probe.sh stages only allowlisted binaries into Experimental/AuthoritativeProbe metadata. The probe blocks use when the original Multiplayer assembly is loaded.
+
+This is source and packaging infrastructure ONLY: no licensed Unity process has loaded this experimental mod in CI or elsewhere in this project. Compatibility of System.Text.Json and transitive dependencies under RimWorld's embedded Unity/Mono remains unverified. See docs/EXPERIMENTAL_PROBE.md.
+
+
+## Fifth iteration — world/bootstrap v2 is an unconnected DTO schema
+
+WorldBootstrapV2 adds presentation-level map layers and entities, world UUID and content fingerprints with strict bounds/duplicate-ID validation and atomic client admission. It is NOT a full RimWorld save and intentionally does not represent health trackers, inventory, gear, ThingComps, Def relationships or world events. No game runtime has populated these records.
+
+The current loopback TCP transport still uses v1; a joining client cannot download v2 map data yet. Mod content and Def catalog hashes must ultimately be calculated from real active RimWorld mods/defs and cannot safely be filled with fabricated or client-provided hashes. Its SHA-256 snapshot digest detects corruption only, not malicious tampering or spoofed server identity. See docs/WORLD_BOOTSTRAP_V2.md.
+
+
+## Sixth iteration — read-only Verse map extractor compiles, not runtime-tested
+
+The new `VerseSingleMapBootstrapSource` references real RimWorld 1.6 terrain/roof/fog grids and spawned Things/Pawns. A core-only source abstraction has deterministic palette packing, strict spatial bounds and fail-closed validation. The bridge is reference-compiled, but no Unity process has executed it; actual fidelity and all third-party mod edge cases remain unknown. The bridge deliberately requires a trusted content manifest and an externally verified world-tile/layer ID; neither is generated automatically. World ID/entity IDs still lack durable save-bound identity. v2 still does not travel over TCP or render in a game client.
+
+
+## Seventh iteration — content fingerprints
+
+An independently authored ContentFingerprintBuilder hashes actual bytes and paths for the *complete installed mod folder* with bounds, no symlinks/reparse points, detection of mutable files, deterministic ordering and a cryptographic SHA-256 digest. VerseContentManifestInputs can capture the active mod list and all resolved Def database identities via the loaded 1.6 API, then perform heavy file I/O off-thread. This assembly has **not run in RimWorld**.
+
+Important: the current `DefCatalogSha256` calculation covers **only Def type, defName and shortHash**, not all resolved semantic fields. Compatibility against modded gameplay remains unproven, as does whether the reflection-based reader captures all actual runtime definitions on installed game versions. Full installed folder hashing may be costly or overly conservative. Details: docs/MOD_CONTENT_FINGERPRINTS.md.
