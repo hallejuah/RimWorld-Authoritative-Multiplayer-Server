@@ -198,7 +198,9 @@ static void HostPipeline()
     host.Domains.SetSpeed(10, 1);
 
     // Simulate arrival from a transport worker, not the game thread.
-    var receiptTask = Task.Run(() => host.EnqueueCommand("alice", Move())).GetAwaiter().GetResult();
+    Task<CommandReceipt>? receiptTask = null;
+    Task.Run(() => { receiptTask = host.EnqueueCommand("alice", Move()); }).GetAwaiter().GetResult();
+    Check(receiptTask is not null, "network worker did not enqueue");
     Check(!receiptTask.IsCompleted && host.QueuedCommandCount == 1, "command executed on worker");
     host.Pump(TimeSpan.FromSeconds(1));
     Check(receiptTask.GetAwaiter().GetResult().Accepted, "command rejected");
