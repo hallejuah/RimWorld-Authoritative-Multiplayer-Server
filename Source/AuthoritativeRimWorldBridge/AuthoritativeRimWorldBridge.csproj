@@ -12,6 +12,7 @@
     <ProjectReference Include="../AuthoritativeCore/AuthoritativeCore.csproj" />
     <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4566" />
     <PackageReference Include="Krafs.Publicizer" Version="2.3.0" />
+    <PackageReference Include="Lib.Harmony" Version="2.4.1" ExcludeAssets="runtime" />
   </ItemGroup>
   <ItemGroup>
     <Publicize Include="Assembly-CSharp" />
