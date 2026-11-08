@@ -56,3 +56,10 @@ This does NOT make the vanilla multiplayer UI a read-only authoritative client a
 ## Optional game-facing probe wrapper (fourth iteration)
 
 Source/AuthoritativeProbeMod is now a standalone net48 Verse.Mod using mod-settings buttons for explicit activation and shutdown; it refuses to run alongside the original Multiplayer assembly. A cryptographically random one-run credential is shown only by copying from the settings screen, and the transport binds only to localhost. Source/AuthoritativeProbeClient provides a separate net8 read-only terminal client. scripts/package-authoritative-probe.sh can stage an isolated test mod with an explicit assembly allowlist. This implementation has passed source compilation but **has never been loaded or tested inside licensed RimWorld**. Details: docs/EXPERIMENTAL_PROBE.md.
+
+
+## Fifth iteration — v2 bootstrap boundary, independently developed
+
+A new `WorldBootstrapV2` data model describes packed map terrain, roof and fog, minimal pawn/thing presentation and a version-sensitive content manifest that can block incompatible clients before world install. Its codec enforces size and shape checks, and client admission is fail-closed and atomic. It is deliberately isolated from the v1 movement stream to avoid silently breaking existing protocol consumers.
+
+This is an original implementation derived from interoperability requirements, not copied from Amity or another mod. The server has no trustworthy Verse-based v2 map extractor or mod/Def fingerprint collector yet, and it has not been runtime-tested in a licensed game. See docs/WORLD_BOOTSTRAP_V2.md.

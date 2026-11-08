@@ -38,3 +38,10 @@ See docs/LOOPBACK_TRANSPORT.md. The prototype listens only on IPAddress.Loopback
 A session receives an initial snapshot, can submit a command and receive an idempotent command receipt, and can Poll for all retained deltas. If the history window is missed, a new snapshot is returned. Poll always ends with EndPoll. The network worker only calls AuthoritativeSimulationHost.EnqueueCommand; real Verse callbacks are restricted to the Unity host thread.
 
 This is a proof of packet sequencing, basic session-bound admission and DTO resync, not cryptographic transport security, a production client, or full game replication.
+
+
+## Provisional v2 map bootstrap (not on the wire yet)
+
+A distinct `WorldBootstrapV2` contract is available in Source/AuthoritativeCore/WorldBootstrapV2.cs. It includes packed map terrain/roof/fog, visual entities/pawns, explicit world ID and a load-order-sensitive mod/Def compatibility manifest. It has its own validated size-bounded codec and atomic read-only client acceptance, separate from `ProtocolCodec` and the current v1 transport.
+
+The v2 contract has NOT replaced the v1 movement protocol and is not collected from actual Verse, displayed in a RimWorld client or transmitted by the local TCP probe. See docs/WORLD_BOOTSTRAP_V2.md.

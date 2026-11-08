@@ -85,3 +85,10 @@ bash scripts/package-authoritative-probe.sh
 The packaging command stages a separate experimental mod in out/AuthoritativeProbeMod. It uses an allowlist rather than redistributing protected RimWorld/Unity reference assemblies. This does NOT certify runtime dependency loading, game startup or any in-game multiplayer behavior. Full instructions and limitations: docs/EXPERIMENTAL_PROBE.md.
 
 The opt-in mod settings UI refuses activation if the original Multiplayer mod assembly is loaded, if the game is not in Playing state, if vanilla time is not paused, or if there is not exactly one loaded map.
+
+
+## Fifth iteration — separately versioned map presentation bootstrap
+
+New in Source/AuthoritativeCore: WorldBootstrapV2 / WorldBootstrapValidator / WorldBootstrapCodec / ClientWorldBootstrapReplica, with seven focused validation tests registered in the existing console test runner. The tests confirm deterministic canonical serialization, map layer limits and palette references, pawn/entity identity and references, RimWorld/mod/Def compatibility checks, immutable client admission and invalid/oversize rejection.
+
+This is a source-level DTO milestone, not a real Verse map capture or a playable world bootstrap. The existing socket loopback protocol still transmits v1 pawn positions only. Detailed contract and next steps: docs/WORLD_BOOTSTRAP_V2.md.

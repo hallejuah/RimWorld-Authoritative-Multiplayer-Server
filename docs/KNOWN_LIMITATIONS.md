@@ -63,3 +63,10 @@ Obtain a licensed RimWorld 1.6 runtime, establish a game simulation bootstrap on
 Source/AuthoritativeProbeMod is a separately compiled net48 Verse.Mod wrapper with opt-in mod settings controls to attach a one-map authoritative host and start the loopback-only transport. Source/AuthoritativeProbeClient is a standalone net8 read-only pawn DTO / single move CLI. scripts/package-authoritative-probe.sh stages only allowlisted binaries into Experimental/AuthoritativeProbe metadata. The probe blocks use when the original Multiplayer assembly is loaded.
 
 This is source and packaging infrastructure ONLY: no licensed Unity process has loaded this experimental mod in CI or elsewhere in this project. Compatibility of System.Text.Json and transitive dependencies under RimWorld's embedded Unity/Mono remains unverified. See docs/EXPERIMENTAL_PROBE.md.
+
+
+## Fifth iteration — world/bootstrap v2 is an unconnected DTO schema
+
+WorldBootstrapV2 adds presentation-level map layers and entities, world UUID and content fingerprints with strict bounds/duplicate-ID validation and atomic client admission. It is NOT a full RimWorld save and intentionally does not represent health trackers, inventory, gear, ThingComps, Def relationships or world events. No game runtime has populated these records.
+
+The current loopback TCP transport still uses v1; a joining client cannot download v2 map data yet. Mod content and Def catalog hashes must ultimately be calculated from real active RimWorld mods/defs and cannot safely be filled with fabricated or client-provided hashes. Its SHA-256 snapshot digest detects corruption only, not malicious tampering or spoofed server identity. See docs/WORLD_BOOTSTRAP_V2.md.
