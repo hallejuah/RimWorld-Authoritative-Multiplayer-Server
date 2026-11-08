@@ -9,6 +9,8 @@ on:
       - 'Source/AuthoritativeCore/**'
       - 'Source/AuthoritativeCore.Tests/**'
       - 'Source/AuthoritativeRimWorldBridge/**'
+      - 'Source/AuthoritativeTransport/**'
+      - 'Source/AuthoritativeTransport.Tests/**'
       - '.github/workflows/authoritative-core.yml'
 
 jobs:
@@ -25,5 +27,9 @@ jobs:
         run: dotnet build Source/AuthoritativeCore/AuthoritativeCore.csproj -c Release --framework netstandard2.0 --warnaserror
       - name: Compile Verse integration bridge against RimWorld 1.6 references
         run: dotnet build Source/AuthoritativeRimWorldBridge/AuthoritativeRimWorldBridge.csproj -c Release
+      - name: Build local TCP transport for net8 and netstandard2.0
+        run: dotnet build Source/AuthoritativeTransport/AuthoritativeTransport.csproj -c Release --warnaserror
+      - name: Execute real loopback TCP integration tests
+        run: dotnet run --project Source/AuthoritativeTransport.Tests/AuthoritativeTransport.Tests.csproj -c Release
       - name: Execute focused authoritative tests
         run: dotnet run --project Source/AuthoritativeCore.Tests/AuthoritativeCore.Tests.csproj -c Release
