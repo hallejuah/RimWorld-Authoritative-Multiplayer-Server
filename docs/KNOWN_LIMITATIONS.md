@@ -1,22 +1,22 @@
 # Known limitations and acceptance status
 
-As of the first authoritative feature-branch iteration:
+As of the second authoritative feature-branch iteration:
 
 ## Implemented source components
 
-- A separate .NET 8 AuthoritativeCore assembly with typed v1 protocol and size-limited JSON codec.
+- A multi-targeted net8/netstandard2.0 AuthoritativeCore assembly with typed v1 protocol and size-limited JSON codec.
 - A command admission gate checking authenticated session/faction/domain, expected revision and duplicate UUIDs.
 - An atomic, version-ordered read-only client DTO replica.
 - Single-threaded independent map-clock scheduling with supported pause/1x/2x/3x and exported clock metadata.
-- A bounded cross-thread command queue and owner-thread AuthoritativeSimulationHost pump, awaiting a real Unity/Verse game driver.
-- A dependency-free .NET 8 console test runner; 14/14 focused tests passed on GitHub Actions.
+- A bounded cross-thread command queue and owner-thread AuthoritativeSimulationHost pump, with a separately compiled, opt-in single-map Verse bridge.
+- A .NET 8 console test runner that exercises command processing, domain mapping, snapshot-to-delta updates, and client DTO replication; CI status is recorded in docs/BUILD_AND_TEST.md.
 
 ## Not implemented or not verified
 
 - Not connected to the existing LiteNetLib network transport or authenticated session establishment. The host provides only the transport-neutral enqueue/pump boundary.
-- No genuine RimWorld 1.6 Unity headless game host or Verse server tick.
-- No client gameplay-tick suppression, object presentation layer or pawn move order wired to Verse.
-- No real game snapshot serializer or change journal, map generation service, stable persisted entity IDs, health/needs, inventory or jobs replication.
+- A RimWorldSingleMapDriver with real TickManager.DoSingleTick and Pawn_JobTracker.TryTakeOrderedJob calls now compiles, but there is NO deployed headless Unity host, startup hook, runtime confirmation or playable server.
+- An opt-in Unity tick guard exists for the server-side single-map experiment, but no reliable client gameplay-tick suppression, object presentation layer, or full client-server move order path exists.
+- A minimal real-pawn position projection and full-scan DTO delta generator exist. No complete game snapshot serializer, map generation service, stable persisted entity IDs, health/needs, inventory or jobs replication exists.
 - No persistence for command receipts, world snapshots, whole-world saves, or crash-safe recovery.
 - No server-side global world simulation, faction creation protocol or atomic cross-domain interactions.
 - No verified client reconnect, message acks, deltas resend buffer, compression or interest management.
@@ -36,3 +36,12 @@ As of the first authoritative feature-branch iteration:
 ## Next required acceptance gate
 
 Obtain a licensed RimWorld 1.6 runtime, establish a game simulation bootstrap on a Unity thread, and prove ONE pawn moves from a genuine server-side command while a client displays the change without executing any authoritative local gameplay tick. Only then can the Stage 1 gameplay criterion be marked complete.
+
+
+## Second-iteration safety notes
+
+- The Verse bridge requires one loaded map and paused vanilla time. It maps map.uniqueID N to network DomainId N+1.
+- It must never be considered a general-purpose independent map-time implementation: DoSingleTick advances the global RimWorld world.
+- The opt-in Harmony update hook is not an authenticated server network handshake. Normal game/UI code can mutate state outside tick callbacks; this needs investigation before a client read-only mode can be claimed.
+- The simplified snapshot contains pawn locations and faction IDs only; it is insufficient for client map creation, pawns' jobs, pathfinding, saves, or reconnect.
+- The bridge's source was compiled against references, not tested inside a licensed RimWorld 1.6 game.

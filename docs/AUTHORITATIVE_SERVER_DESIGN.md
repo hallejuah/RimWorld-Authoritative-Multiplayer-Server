@@ -1,17 +1,17 @@
 # Authoritative dedicated server design
 
-Status: architecture proposal + an isolated CI-built and unit-tested core; not a playable dedicated server.
+Status: CI-built and unit-tested core plus a source-compiled RimWorld 1.6 Verse integration bridge; NOT a playable dedicated server.
 
 ## Hard boundary
 
-The original multiplayer stays in lockstep mode with protocol 54. New code lives in Source/AuthoritativeCore, with a separate net8 project and protocol v1. It is NOT wired into the original network handlers, game bootstrap or save system. Activating it does not modify existing behavior.
+The original multiplayer stays in lockstep mode with protocol 54. New code lives in Source/AuthoritativeCore, with a separately multi-targeted net8/netstandard2.0 project and protocol v1. It is NOT wired into the original network handlers, game bootstrap or save system. Activating it does not modify existing behavior.
 
 Proposed production subsystems:
 
-1. Unity/Verse SimulationHost: must own Current.Game, Find, maps, game object IDs, RNG, Scribe saves and the sole game simulation thread. The transport-neutral AuthoritativeSimulationHost is now implemented: it enqueues transport commands with bounded backpressure, drains a limited number on the owner thread, dispatches game-tick callbacks and requests a consistent snapshot. The actual IAuthoritativeGameDriver binding to Verse is NOT implemented.
-2. SimulationDomainManager (initial implementation): a single-threaded 60-base-tick scheduler, per-domain tick/speed/pause, export/restore of clock metadata. Implemented in Source/AuthoritativeCore/SimulationDomainManager.cs; no Verse callback is presently connected.
-3. CommandProcessor (initial implementation): validates authenticated connection identity, declared faction, owned domain, protocol, state revision and unique command ID. It enforces owning-thread execution and invokes an ICommandExecutor, to be implemented against a real Verse runtime. A failing executor must not partially mutate the game.
-4. WorldStateReplicator (pending): server-only creation/update/deletion journal, stable network identifiers, snapshot cut at a sim-thread barrier, per-subscriber interest filtering, sequenced and acknowledged deltas.
+1. Unity/Verse SimulationHost: must own Current.Game, Find, maps, game object IDs, RNG, Scribe saves and the sole game simulation thread. The transport-neutral AuthoritativeSimulationHost is now implemented: it enqueues transport commands with bounded backpressure, drains a limited number on the owner thread, dispatches game-tick callbacks and requests a consistent snapshot. An opt-in RimWorldSingleMapDriver is now compiled against RimWorld 1.6 reference assemblies in Source/AuthoritativeRimWorldBridge. It invokes actual TickManager.DoSingleTick and TryTakeOrderedJob in a loaded paused single-map Unity game, but has NEVER been executed with licensed game files in this environment.
+2. SimulationDomainManager (initial implementation): a single-threaded 60-base-tick scheduler, per-domain tick/speed/pause, export/restore of clock metadata. Implemented in Source/AuthoritativeCore/SimulationDomainManager.cs; a provisional single-map Verse callback is implemented but has no proven runtime startup.
+3. CommandProcessor (initial implementation): validates authenticated connection identity, declared faction, owned domain, protocol, state revision and unique command ID. It enforces owning-thread execution and invokes an ICommandExecutor, implemented by the single-map Verse bridge for the MovePawn command only. A failing executor must not partially mutate the game.
+4. WorldStateReplicator (initial implementation): compares bounded DTO snapshots, emits ordered Create/Update/Delete changes and monotonically increasing network revisions. There is no dirty tracking, per-subscriber interest filtering, persistence, acknowledgement channel or complete map serialization yet.
 5. ClientStateReplica (initial implementation): applies typed snapshots and consecutive deltas into an atomic read-only DTO store. This is not a RimWorld Thing presentation bridge.
 6. Durable SaveCoordinator (pending): save all maps/world, clocks, authoritative net IDs, outstanding operations and command receipts consistently; temp file and recovery slot rotation.
 7. AuthoritativeTransport (pending): authentication, bounded messages, session ownership, reliable sequence delivery, acks, resync requests and backpressure.
@@ -28,7 +28,7 @@ Proposed production subsystems:
 
 ## Immediate limitations of implemented code
 
-The production IAuthoritativeGameDriver/ICommandExecutor binding and ICommandAuthorization session provider do not exist yet. The test project supplies test implementations only. The command receipt ledger is in memory, bounded at 100,000 IDs by default, and not persistent; it fails closed when full. StateVersion is an injected value, not a complete entity revision vector. No command is executed through Verse and no network sockets are opened. The simplified ThingState (ID, domain, faction, X, Z) is only a transport example; it cannot reconstruct a pawn or a map.
+The compile-checked RimWorldSingleMapDriver binds a single loaded map to IAuthoritativeGameDriver, but an authenticated production transport/session provider and live Unity bootstrap do not exist yet. The test project supplies test implementations only. The command receipt ledger is in memory, bounded at 100,000 IDs by default, and not persistent; it fails closed when full. StateVersion is an injected value, not a complete entity revision vector. The bridge contains real Verse job and tick calls, but these have not run in the game and no network sockets are opened. The simplified ThingState (ID, domain, faction, X, Z) is only a transport example; it cannot reconstruct a pawn or a map.
 
 The scheduler is deliberately NOT a substitute for RimWorld's AsyncTimeComp: it supplies when-to-tick decisions, not how to-tick RimWorld gameplay. ClientStateReplica stores DTOs and is not a proof that local gameplay ticks can be disabled without breaking UI.
 
@@ -39,3 +39,8 @@ B. Add a read-only client mode gated by an explicit authoritative connection han
 C. Implement server-reconstructible snapshot and one pawn's move command using real game IDs, pawn jobs and a client presentation bridge.
 D. Add deterministic entity-change journals and reconnect-on-snapshot; then test map lifecycle and multifaction.
 E. Only after the single-pawn vertical slice is proven, expand to world events, independent time and cross-domain transaction policies.
+
+
+## Integration experiment status
+
+Source/AuthoritativeRimWorldBridge builds separately and is not installed by the original Multiplayer mod. SingleMapUnityTickLoop.Start is an explicit opt-in activation; it patches the vanilla TickManagerUpdate and pumps its host from Root_Play.Update. No invocation or authenticated network handshake is wired up. It assumes the vanilla game is paused, exactly one map is loaded, and the caller owns a Unity main-thread context. This preliminary control needs real in-game tests and a full audit of all other gameplay mutation paths. See docs/GAME_INTEGRATION_PROBE.md.

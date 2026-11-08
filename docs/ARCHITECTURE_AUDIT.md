@@ -60,4 +60,5 @@ Wrong random state on map 0 and Map instances don't match were reported by the p
 6. Disconnect and reconnect to a fresh snapshot; compare server state and client presentation.
 7. Instrument global Find, Rand, faction, pathfinder and long-event interactions; do not add worker-thread ticking until each is proven safe.
 
-The new Source/AuthoritativeCore implements limited transport-neutral foundations only. It does not implement these seven game steps.
+The transport-neutral Source/AuthoritativeCore now multi-targets net8.0/netstandard2.0. A new separately compiled Source/AuthoritativeRimWorldBridge connects the real RimWorld 1.6 TickManager.DoSingleTick, Pawn_JobTracker.TryTakeOrderedJob and pawn position queries to a single-map game driver. It is an opt-in library for a loaded, paused Unity game. It does NOT implement end-to-end headless bootstrap, network handshakes, server-to-client map construction or any verified live gameplay test. The seven acceptance steps above remain unproven.
+A real RimWorld map may have uniqueID 0, while the core requires positive domain IDs; MapDomainIds.FromMapUniqueId deliberately maps map 0 to domain 1.

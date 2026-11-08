@@ -1,12 +1,12 @@
 # Independent simulation time domains
 
-Status: isolated scheduling logic implemented; RimWorld tick binding and cross-domain world semantics pending.
+Status: independent domain scheduler plus compile-checked single-map Verse tick adapter; multi-map RimWorld execution and world-time rules pending.
 
 ## Current scheduler behavior
 
 SimulationDomainManager maintains one clock per positive domain ID: faction ID, game tick, selected speed (0 paused; 1x, 2x or 3x), and pending ticks. A single owner thread dispatches tick callbacks at a nominal 60 base ticks per real second per speed. It caps dispatch at 240 callbacks per domain per Advance invocation and retains a backlog; callbacks are sequential and an exception propagates. A successful callback is counted exactly once. Pausing one domain does not pause another. ExportClocks/RestoreClocks serialize metadata for future integration with world saves.
 
-This is purely a clock scheduler. AuthoritativeSimulationHost.Pump can dispatch the per-domain callbacks, but no actual Verse game driver is bound. It does not itself tick Verse maps, simulate quests or validate game-state writes. Real duration, lag and event ordering will require server telemetry and integration tests.
+This is purely a clock scheduler. AuthoritativeSimulationHost.Pump can dispatch the per-domain callbacks, and an optional RimWorldSingleMapDriver can now call TickManager.DoSingleTick for exactly one loaded, paused RimWorld map. This bridge is compiled against 1.6 references but not game-tested. It cannot safely tick two independently timed RimWorld maps and does not solve world-time semantics. Real duration, lag and event ordering will require server telemetry and integration tests.
 
 ## Global time is not local map time
 
@@ -28,3 +28,8 @@ A speed change affects only a domain the authenticated player's faction may cont
 ## Tests and unproven aspects
 
 The console test project exercises 3x versus 1x, pause isolation, duplicate domain rejection and clock export/restore. It does not execute RimWorld, caravans, pathfinding, story events, or real network reconnections. None of the cross-domain policies above is implemented as a transaction coordinator yet.
+
+
+## Domain ID mapping
+
+The original RimWorld map.uniqueID may start at zero; MapDomainIds.FromMapUniqueId maps 0 -> 1. Independent map clocks require a deliberately separate domain identifier, not an assumption that map.uniqueID is already positive. The current single-map adapter uses the vanilla global TickManager.DoSingleTick and is NEVER an example of safe independent multi-map ticking.

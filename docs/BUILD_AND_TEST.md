@@ -3,13 +3,15 @@
 ## Baseline
 
 Base Multiplayer commit: 4a3be276bbf90cc597abfa5b299935ca8eeeb285.
-Authoritative code is intentionally separate from Source/Multiplayer.sln and the existing 0.11.5 client and standalone relay server; it currently targets .NET 8 only.
+Authoritative code is intentionally separate from Source/Multiplayer.sln and the existing 0.11.5 client and standalone relay server. AuthoritativeCore targets both net8.0 and netstandard2.0; the opt-in RimWorld bridge targets net48.
 
-Dependencies for the standalone core: .NET 8 SDK; no NuGet dependencies.
+Dependencies: .NET 8 SDK; the core netstandard2.0 target restores System.Text.Json 8.0.5. The bridge references Krafs.Rimworld.Ref 1.6.4566, Krafs.Publicizer 2.3.0 and Lib.Harmony 2.4.1 at build time. Compilation uses reference assemblies; game execution additionally needs licensed RimWorld binaries and Unity.
 Dependencies for the original client: .NET SDK/MSBuild for net48, Krafs.Rimworld.Ref 1.6.4566, Harmony 2.4.1, and other packages specified in the csproj; for a genuine game integration run, licensed RimWorld 1.6 game files, Unity runtime and Prepatcher are additionally required.
 
 Run independently:
 - dotnet build Source/AuthoritativeCore/AuthoritativeCore.csproj -c Release
+- dotnet build Source/AuthoritativeCore/AuthoritativeCore.csproj -c Release -f netstandard2.0
+- dotnet build Source/AuthoritativeRimWorldBridge/AuthoritativeRimWorldBridge.csproj -c Release
 - dotnet run --project Source/AuthoritativeCore.Tests/AuthoritativeCore.Tests.csproj -c Release
 
 The test runner exits nonzero on failure and uses no mocking library. Its small test-only ICommandExecutor is not a substitute for RimWorld gameplay.
@@ -45,3 +47,12 @@ These are real automated build/test results, but neither workflow starts RimWorl
 A licensed RimWorld 1.6 installation and Unity server launcher are required to test a pawn's real server-side movement, a snapshot-to-Thing presentation bridge, client gameplay tick suppression, map creation, health/jobs and reconnect after a network failure. None of these integration tests has been executed.
 
 No benchmark, Docker-based RimWorld runtime, working game networking, or full save/load has been demonstrated.
+
+
+## Second-iteration compile verification and smoke-test setup
+
+- net8.0, netstandard2.0 and the new net48 Verse bridge compiled through .github/workflows/authoritative-core.yml.
+- The separate bridge is intentionally excluded from Source/Multiplayer.sln and not copied to the deployed mod. This prevents half-integrated gameplay changes from affecting the original lockstep multiplayer.
+- The bridge calls real RimWorld API entry points, but the CI references are not an installed or running game. No one has executed a licensed RimWorld gameplay session in this environment.
+
+For an in-game proof, follow docs/GAME_INTEGRATION_PROBE.md. Do not mark the first vertical slice accepted until map loading, ticking, pawn job execution, client rendering WITHOUT local game ticks, and reconnect are observed with an actual game process.
