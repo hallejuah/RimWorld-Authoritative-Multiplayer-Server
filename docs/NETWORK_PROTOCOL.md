@@ -1,0 +1,26 @@
+# Authoritative wire contract — provisional v1
+
+This is a NEW protocol, incompatible with existing Multiplayer protocol 54. The v1 schema lives in Source/AuthoritativeCore/Protocol.cs and ProtocolCodec.cs. There is no transport adapter yet.
+
+## Command
+
+PlayerCommand fields: ProtocolVersion, CommandId (UUID), SessionId (untrusted claim), FactionId, DomainId, ExpectedStateVersion, Kind, TargetThingId, X, Z, RequestedSpeed.
+
+Current recognized kinds: MovePawn, SetDomainSpeed. The payload is a typed DTO, not a serialized Verse object.
+
+CommandProcessor.Process(authenticatedSessionId, command) is the trust boundary. The transport MUST derive authenticatedSessionId from its authenticated connection, never from the payload. The processor checks protocol v1, nonempty ID, identity equality, faction/domain ownership, exact expected version and supported command fields. The receipt records accepted/rejected game execution after a known ID is processed. Retransmission of the same ID and payload returns its saved receipt; reusing an ID with changed fields is rejected. A rejected precondition is not cached; a truly durable host must additionally record operation/transaction commits.
+
+## State replication
+
+WorldSnapshot: monotonically increasing Version and list of ThingState with stable positive IDs, positive DomainId and FactionId, X, Z.
+WorldDelta: BaseVersion, Version and ordered Create/Update/Delete StateChanges. The minimal implementation demands Version = BaseVersion + 1.
+
+ClientStateReplica.InstallSnapshot constructs a fresh dictionary and swaps only on success, rejecting duplicate IDs. ApplyDelta uses a working dictionary and commits only if the exact base version and all changes are valid. Unknown deletions, updates of non-existent IDs, changes of entity faction/domain, duplicates, and gaps all return NeedsSnapshot without a partial application.
+
+This schema is intentionally far too small to represent actual RimWorld objects, cross-object references, map generation, health, needs, jobs or UI state. These fields must be added deliberately, with lifecycle and reference rules, before game integration.
+
+## Framing and safety
+
+ProtocolCodec uses System.Text.Json bound to named DTO types only, MaxDepth 16 and disallows unknown JSON members. Command payloads are limited to 16 KiB; individual snapshot/delta payloads are limited to 8 MiB. Compression, fragment checksums, total snapshot budgets, authentication, encryption, rate limiting, reliable sequence/ack messages, anti-replay persistence, and server-side interest management remain TODOs.
+
+A wire snapshot/reconnect flow has not been implemented. During resync the client must buffer or reject incompatible deltas and atomically install an authoritative snapshot before resuming. No network packet handler should feed this wire protocol into existing lockstep ScheduledCommand methods.
