@@ -227,7 +227,7 @@ static void ReplicatorDeltas()
     var created = new ThingState(101, 1, 5, 6, 7);
     var change = journal.CaptureChanges(new WorldSnapshot(14, [created, moved]))
         ?? throw new Exception("Expected movement delta");
-    Check(change is not null && change.Version == 1 && change.BaseVersion == 0 &&
+    Check(change.Version == 1 && change.BaseVersion == 0 &&
         change.Changes.Count == 2, "bad ordered delta");
     Check(client.ApplyDelta(ProtocolCodec.DecodeDelta(ProtocolCodec.EncodeDelta(change))) ==
         ReplicaApplyResult.Applied, "wire delta not applied");
@@ -237,7 +237,7 @@ static void ReplicatorDeltas()
     Check(journal.Version == 1, "empty delta advanced revision");
     var removed = journal.CaptureChanges(new WorldSnapshot(16, [moved]))
         ?? throw new Exception("Expected removal delta");
-    Check(removed is not null && removed.Version == 2, "deletion missing");
+    Check(removed.Version == 2, "deletion missing");
     Check(client.ApplyDelta(removed) == ReplicaApplyResult.Applied &&
         !client.Things.ContainsKey(101), "removed object persisted");
 }
