@@ -7,14 +7,14 @@ using Verse;
 
 namespace Multiplayer.Authoritative.RimWorldBridge;
 
-// Read-only, game-thread adapter for an already loaded RimWorld 1.6 map.
-// A separate trusted host must resolve Map.Tile (PlanetTile in 1.6) to the
-// v2 integer tile coordinate, and must provide a REAL content fingerprint.
-// No game logic, Thing spawning, map generation or Scribe save occurs here.
+// Read-only GAMEPLAY adapter for an already loaded RimWorld 1.6 map.
+// Capturing may allocate server identity metadata, but never spawns or ticks Things.
+// A trusted host resolves PlanetTile to worldTile and supplies a real manifest.
 public sealed class VerseSingleMapBootstrapSource : IWorldBootstrapMapSource
 {
     private readonly Map map;
     private readonly int ownerThread = Thread.CurrentThread.ManagedThreadId;
+    private readonly GameComponent_AuthoritativeIdentity identities;
 
     public int DomainId { get; }
     public int WorldTile { get; }
@@ -29,6 +29,8 @@ public sealed class VerseSingleMapBootstrapSource : IWorldBootstrapMapSource
         WorldTile = worldTile;
         DomainId = MapDomainIds.FromMapUniqueId(map.uniqueID);
         EnsureReady();
+        identities = GameComponent_AuthoritativeIdentity.ForCurrentGame();
+        _ = identities.WorldId;
     }
 
     public string TerrainDefAt(int x, int z)
@@ -58,44 +60,29 @@ public sealed class VerseSingleMapBootstrapSource : IWorldBootstrapMapSource
         EnsureReady();
         var entities = new List<EntityPresentation>();
         var ids = new HashSet<long>();
-        foreach (var thing in map.listerThings.AllThings)
+        foreach (var thing in map.listerThings.AllThings.Where(t => t != null).OrderBy(t => t.thingIDNumber))
         {
             if (thing == null || !thing.Spawned || thing.Map != map)
                 continue;
-            if (thing.thingIDNumber <= 0)
-                throw new InvalidOperationException("A spawned Thing has no positive identity");
-
-            var id = (long)thing.thingIDNumber;
+            var id = identities.GetOrAssignId(thing);
             if (!ids.Add(id))
-                throw new InvalidOperationException("Duplicate spawned Thing identity");
-
+                throw new InvalidOperationException("Duplicate spawned server entity identity");
             var position = thing.Position;
-            if (position.x < 0 || position.x >= Width ||
-                position.z < 0 || position.z >= Height)
+            if (position.x < 0 || position.x >= Width || position.z < 0 || position.z >= Height)
                 throw new InvalidOperationException("Spawned Thing is outside map bounds");
-
             var pawn = thing as Pawn;
             var payload = pawn is null ? null : new PawnPresentation(
-                pawn.Drafted,
-                pawn.Downed,
-                pawn.Dead,
-                pawn.CurJob?.def?.defName);
+                pawn.Drafted, pawn.Downed, pawn.Dead, pawn.CurJob?.def?.defName);
             var faction = thing.Faction;
             if (faction != null && faction.loadID <= 0)
                 throw new InvalidOperationException("Spawned Thing faction has invalid ID");
-
             entities.Add(new EntityPresentation(
-                id,
-                DomainId,
-                faction?.loadID ?? 0,
+                id, DomainId, faction?.loadID ?? 0,
                 thing.def?.defName ?? throw new InvalidOperationException("Thing lacks Def"),
-                position.x, position.z,
-                thing.Rotation.AsInt,
-                thing.stackCount,
-                pawn is null ? PresentationKind.Thing : PresentationKind.Pawn,
-                payload));
+                position.x, position.z, thing.Rotation.AsInt, thing.stackCount,
+                pawn is null ? PresentationKind.Thing : PresentationKind.Pawn, payload));
         }
-        return entities;
+        return entities.OrderBy(e => e.Id).ToArray();
     }
 
     private void CheckBounds(int x, int z)
@@ -109,8 +96,7 @@ public sealed class VerseSingleMapBootstrapSource : IWorldBootstrapMapSource
         if (Thread.CurrentThread.ManagedThreadId != ownerThread)
             throw new InvalidOperationException("Map extraction must run on the Unity owner thread");
         if (Current.ProgramState != ProgramState.Playing || Current.Game == null ||
-            Find.TickManager == null || Find.Maps.Count != 1 ||
-            !ReferenceEquals(Find.Maps[0], map) ||
+            Find.TickManager == null || Find.Maps.Count != 1 || !ReferenceEquals(Find.Maps[0], map) ||
             Find.TickManager.CurTimeSpeed != TimeSpeed.Paused)
             throw new InvalidOperationException("A single loaded and paused game map is required");
     }
