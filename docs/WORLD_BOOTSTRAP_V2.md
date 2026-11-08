@@ -30,7 +30,7 @@ The independent v2 schema prepares a *visual* initial-state representation. It i
 
 The prototype accepts only equal game versions, mod order, mod versions, mod hashes and DefCatalogSha256; duplicates and malformed hashes are rejected. Package IDs and hex digests are normalized to lowercase during validation.
 
-**Critical:** No Verse manifest collector or mod-content hashing is implemented yet. A real game integration MUST derive hashes from actual loaded code/assets and resolved definitions. Do not construct dummy hashes or trust the joining client's declared values.
+**Critical:** A separately compiled Verse manifest-input collector and complete mod-folder byte hashing now exist (see docs/MOD_CONTENT_FINGERPRINTS.md), but they have not been run in-game. The current Def digest covers only identities (type, name, shortHash), NOT all resolved semantic fields. Full compatibility and game/runtime security are not proven; never substitute client-declared or dummy hashes.
 
 ## Validation, determinism, integrity
 
@@ -53,7 +53,7 @@ Run `dotnet run --project Source/AuthoritativeCore.Tests/AuthoritativeCore.Tests
 
 ## Next implementation gates
 
-1. Complete the already reference-compiled single-map Verse extractor with a trustworthy manifest collector, persistent world ID and proper RimWorld 1.6 planet tile/layer mapping; then prove its outputs match a licensed test game. See docs/VERSE_V2_EXTRACTION.md.
+1. Validate the new compiled loaded-mod/Def identity collector against a licensed game and extend it to semantic resolved Def hashing; implement persistent world ID and correct RimWorld 1.6 planet tile/layer mapping. See docs/VERSE_V2_EXTRACTION.md and docs/MOD_CONTENT_FINGERPRINTS.md.
 2. Negotiate v2 support explicitly after authentication and before client map startup; publish bounded chunks with a per-checkpoint digest.
 3. Build a **read-only** Verse client presentation layer with no client-side jobs, pathfinding, pawn trackers or world ticking. Test against a real game process.
 4. Add event-based entity changes and relationships (containers, equipped things, injuries, state-machine transitions) with transaction boundaries, and full server Scribe saves.

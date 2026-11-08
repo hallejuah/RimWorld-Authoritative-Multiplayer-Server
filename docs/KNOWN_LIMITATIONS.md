@@ -75,3 +75,10 @@ The current loopback TCP transport still uses v1; a joining client cannot downlo
 ## Sixth iteration — read-only Verse map extractor compiles, not runtime-tested
 
 The new `VerseSingleMapBootstrapSource` references real RimWorld 1.6 terrain/roof/fog grids and spawned Things/Pawns. A core-only source abstraction has deterministic palette packing, strict spatial bounds and fail-closed validation. The bridge is reference-compiled, but no Unity process has executed it; actual fidelity and all third-party mod edge cases remain unknown. The bridge deliberately requires a trusted content manifest and an externally verified world-tile/layer ID; neither is generated automatically. World ID/entity IDs still lack durable save-bound identity. v2 still does not travel over TCP or render in a game client.
+
+
+## Seventh iteration — content fingerprints
+
+An independently authored ContentFingerprintBuilder hashes actual bytes and paths for the *complete installed mod folder* with bounds, no symlinks/reparse points, detection of mutable files, deterministic ordering and a cryptographic SHA-256 digest. VerseContentManifestInputs can capture the active mod list and all resolved Def database identities via the loaded 1.6 API, then perform heavy file I/O off-thread. This assembly has **not run in RimWorld**.
+
+Important: the current `DefCatalogSha256` calculation covers **only Def type, defName and shortHash**, not all resolved semantic fields. Compatibility against modded gameplay remains unproven, as does whether the reflection-based reader captures all actual runtime definitions on installed game versions. Full installed folder hashing may be costly or overly conservative. Details: docs/MOD_CONTENT_FINGERPRINTS.md.

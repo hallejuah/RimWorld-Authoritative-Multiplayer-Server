@@ -102,3 +102,14 @@ dotnet run --project Source/AuthoritativeCore.Tests/AuthoritativeCore.Tests.cspr
 ```
 
 The bridge now contains a Verse-backed `IWorldBootstrapMapSource`. Its real map extraction has **only been reference-compiled**, not game-run. Four new automated fake-source tests validate v2 palette packing, roof and fog, map/entity ordering, bounds, and manifest gating. See docs/VERSE_V2_EXTRACTION.md.
+
+
+## Seventh iteration — deterministic content fingerprints
+
+```bash
+dotnet build Source/AuthoritativeCore/AuthoritativeCore.csproj -c Release --warnaserror
+dotnet build Source/AuthoritativeRimWorldBridge/AuthoritativeRimWorldBridge.csproj -c Release
+dotnet run --project Source/AuthoritativeCore.Tests/AuthoritativeCore.Tests.csproj -c Release
+```
+
+A new pure-core full installed-mod file-tree SHA-256 builder and resolved Def *identity* digest are tested against fixture directories. The owner-thread Verse adapter enumerates loaded mod roots and active Def databases using RimWorld 1.6 references, then exposes copied inputs for off-thread hashing. There is **no in-game invocation**. See docs/MOD_CONTENT_FINGERPRINTS.md for scope, security limits and false mismatch risks.

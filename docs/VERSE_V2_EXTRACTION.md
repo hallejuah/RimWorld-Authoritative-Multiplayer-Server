@@ -12,7 +12,7 @@ Status: source compiled against RimWorld 1.6.4566 references, pure map-packing t
 
 The game must be playing on the **Unity thread**, paused at vanilla speed with exactly one loaded map. `WorldId` must be a nonempty server-owned UUID that is persistently bound to the world across genuine save/load; this persistence is **not implemented**. `networkVersion` must be assigned by the producer's publication scheduler (not a client).
 
-**The most important missing prerequisite is a trusted `ContentManifest`.** It must contain genuine loaded RimWorld/mod code/content fingerprints and a real resolved Def catalog digest. These are **not yet computed** by the bridge. Calling the method with arbitrary or placeholder hashes would not be a security or compatibility proof. For this reason, the optional test mod deliberately does not expose a `CaptureBootstrapV2` button or wire endpoint yet.
+**The most important missing prerequisite remains a fully trustworthy `ContentManifest`.** The bridge now collects actual loaded mod paths and runtime Def identities, while the core hashes mod file bytes; however, these have only been compiled, not run in-game. `DefCatalogSha256` currently hashes only Def identities, not the complete resolved semantic contents. Calling the method with arbitrary or placeholder hashes would not be a security or compatibility proof. For this reason, the optional test mod deliberately does not expose a `CaptureBootstrapV2` button or wire endpoint yet.
 
 **WorldTile** is supplied explicitly. RimWorld 1.6 uses a `PlanetTile`/world-layer representation, whereas the provisional v2 DTO uses a plain integer. The host must implement and persist an unambiguous tile/layer mapping before a real client can trust this field. No `GetHashCode`-based fake tile mapping is permitted.
 
@@ -40,7 +40,7 @@ The compiled bridge also fixes a previous false-positive `MovePawn` receipt: if 
 
 ## Next stages (game-runtime tests remain deferred at the user's request)
 
-1. Implement a trustworthy manifest builder from exactly the loaded RimWorld mods and resolved Def catalog. Add explicit hash scope, normalization and bounded file I/O; verify with fixtures; do not silently invent hashes.
+1. Runtime-verify the new mod file-tree and Def-identity collector, then expand to canonical semantic hashes of all resolved Def fields and active runtime patch/mod configuration. The complete file-tree SHA-256 implementation is available but may be conservative/IO-heavy. See docs/MOD_CONTENT_FINGERPRINTS.md.
 2. Redesign `WorldTile` for RimWorld 1.6 planet layers, stable server save world ID and stable full entity identity.
 3. Add authenticated v2 negotiation and bounded streamed/chunked snapshot transport; no clients should mix v1/v2 messages.
 4. Build read-only Verse *presentation* from accepted DTOs without ticking client game rules.

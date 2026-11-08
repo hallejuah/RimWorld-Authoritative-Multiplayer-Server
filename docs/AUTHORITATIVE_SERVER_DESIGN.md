@@ -68,3 +68,8 @@ This is an original implementation derived from interoperability requirements, n
 ## Sixth iteration: real Verse map extraction, not game-tested
 
 The v2 capture builder and reference-compiled Verse adapter read a single loaded map's terrain/roof/fog and minimal spawned Thing/Pawn metadata on the owner thread, then produce strictly validated v2 DTOs. No game actions are executed by this reader. It is an explicitly invoked utility, not a public TCP endpoint: content fingerprinting, stable world UUID, 1.6 PlanetTile mapping, client presentation and actual game-runtime integration are required before it can be used safely. See docs/VERSE_V2_EXTRACTION.md.
+
+
+## Seventh iteration: content-manifest inputs
+
+The bridge can capture active, ordered `LoadedModManager.RunningModsListForReading` mod roots and all `GenDefDatabase` runtime Def identities. A separate hash builder fingerprints every regular file under each mod root and computes a canonical SHA-256 of the Def identity set, with strict file-system limits. Heavy hashing is isolated from the Unity owner-thread capture step. This remains **an unexecuted game integration**: `DefCatalogSha256` covers identity metadata only; full semantic Def equivalence, activated assembly selection and mod settings are not verified. It is not used to admit remote clients. Details: docs/MOD_CONTENT_FINGERPRINTS.md.

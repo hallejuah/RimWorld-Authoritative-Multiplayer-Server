@@ -45,3 +45,8 @@ This is a proof of packet sequencing, basic session-bound admission and DTO resy
 A distinct `WorldBootstrapV2` contract is available in Source/AuthoritativeCore/WorldBootstrapV2.cs. It includes packed map terrain/roof/fog, visual entities/pawns, explicit world ID and a load-order-sensitive mod/Def compatibility manifest. It has its own validated size-bounded codec and atomic read-only client acceptance, separate from `ProtocolCodec` and the current v1 transport.
 
 The v2 contract has NOT replaced the v1 movement protocol and is not collected from actual Verse, displayed in a RimWorld client or transmitted by the local TCP probe. See docs/WORLD_BOOTSTRAP_V2.md.
+
+
+## Mod and Def compatibility groundwork (seventh iteration)
+
+A new separately compiled collector supplies `ContentManifest` by hashing installed mod *folder bytes and canonical paths* and the types/names/shortHashes of actually loaded Def identities. This is not wired into the v1 movement handshake. The Def digest does not cover runtime values, patch effects or mod settings: matching manifests are necessary preliminary evidence but are NOT sufficient to accept an arbitrary client for gameplay. See docs/MOD_CONTENT_FINGERPRINTS.md.
