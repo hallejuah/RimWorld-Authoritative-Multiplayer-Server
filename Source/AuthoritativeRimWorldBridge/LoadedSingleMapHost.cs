@@ -10,6 +10,16 @@ public sealed class LoadedSingleMapHost
 {
     public RimWorldSingleMapDriver Driver { get; }
     public AuthoritativeSimulationHost Host { get; }
+    public WorldStateReplicator Replication { get; } = new();
+
+    // Network initial state and subsequent deltas must be captured on the
+    // Unity simulation thread; consumers can encode them via ProtocolCodec.
+    // The projection currently contains only pawn positions and ownership.
+    public WorldSnapshot BeginReplication() =>
+        Replication.Start(Host.CaptureSnapshot());
+
+    public WorldDelta? CaptureDelta() =>
+        Replication.CaptureChanges(Host.CaptureSnapshot());
 
     private LoadedSingleMapHost(RimWorldSingleMapDriver driver,
         AuthoritativeSimulationHost host)
