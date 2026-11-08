@@ -19,7 +19,7 @@ As of the first authoritative feature-branch iteration:
 - No persistence for command receipts, world snapshots, whole-world saves, or crash-safe recovery.
 - No server-side global world simulation, faction creation protocol or atomic cross-domain interactions.
 - No verified client reconnect, message acks, deltas resend buffer, compression or interest management.
-- No tests executed in this sandbox (dotnet and game runtime unavailable).
+- Unit tests and original solution tests executed successfully in GitHub Actions; no RimWorld/Unity integration tests executed. The interactive sandbox lacks dotnet and game files.
 - No DLC compatibility tests, load tests, production deployment artifact, Linux/Windows game run or independent client UI test.
 
 ## Risks

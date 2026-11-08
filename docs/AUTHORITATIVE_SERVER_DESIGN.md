@@ -1,6 +1,6 @@
 # Authoritative dedicated server design
 
-Status: architecture proposal + a limited compiled-code candidate; not a playable dedicated server.
+Status: architecture proposal + an isolated CI-built and unit-tested core; not a playable dedicated server.
 
 ## Hard boundary
 
@@ -10,7 +10,7 @@ Proposed production subsystems:
 
 1. Unity/Verse SimulationHost: owns Current.Game, Find, maps, game object IDs, RNG, Scribe saves, and the sole game simulation thread. Must be integrated with genuine RimWorld 1.6 methods before it is considered implemented.
 2. SimulationDomainManager (initial implementation): a single-threaded 60-base-tick scheduler, per-domain tick/speed/pause, export/restore of clock metadata. Implemented in Source/AuthoritativeCore/SimulationDomainManager.cs; no Verse callback is presently connected.
-3. CommandProcessor (initial implementation): validates authenticated connection identity, declared faction, owned domain, protocol, state revision and unique command ID. It invokes an ICommandExecutor, to be implemented against a real Verse runtime. A failing executor must not partially mutate the game.
+3. CommandProcessor (initial implementation): validates authenticated connection identity, declared faction, owned domain, protocol, state revision and unique command ID. It enforces owning-thread execution and invokes an ICommandExecutor, to be implemented against a real Verse runtime. A failing executor must not partially mutate the game.
 4. WorldStateReplicator (pending): server-only creation/update/deletion journal, stable network identifiers, snapshot cut at a sim-thread barrier, per-subscriber interest filtering, sequenced and acknowledged deltas.
 5. ClientStateReplica (initial implementation): applies typed snapshots and consecutive deltas into an atomic read-only DTO store. This is not a RimWorld Thing presentation bridge.
 6. Durable SaveCoordinator (pending): save all maps/world, clocks, authoritative net IDs, outstanding operations and command receipts consistently; temp file and recovery slot rotation.

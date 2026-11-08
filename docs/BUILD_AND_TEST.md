@@ -21,9 +21,15 @@ For upstream baseline (may require restoring dependencies and platform-specific 
 
 GitHub files, master revision, project references, LICENSE files and C# sources were read through the connected GitHub API. GitHub writes were used to create a dedicated feature branch and commits.
 
-The current execution sandbox does NOT have a dotnet SDK, Mono C# compiler, MSBuild or locally accessible game DLLs. Direct git clone was unavailable because container DNS could not reach github.com. Therefore no dotnet compilation, unit-test executable or actual RimWorld session has run here. Do NOT infer build success from these source additions.
+The interactive execution sandbox does NOT have a dotnet SDK, Mono C# compiler, MSBuild or locally accessible game DLLs. Direct git clone was unavailable because container DNS could not reach github.com. Therefore no local compilation or actual RimWorld gameplay integration has run here.
 
-## Test scenario coverage (unit, code present; execution pending)
+GitHub Actions DID run the projects on hosted runners:
+- Isolated core workflow: https://github.com/hallejuah/RimWorld-Authoritative-Multiplayer-Server/actions/runs/42481107400 — .NET 8 Release build succeeded with zero warnings and errors; all 11 first-revision standalone core scenarios passed. Subsequent commits add further test coverage and have their own CI runs.
+- Existing solution PR workflow: https://github.com/hallejuah/RimWorld-Authoritative-Multiplayer-Server/actions/runs/42481107485 — original solution Debug and Release builds passed (68 and 78 existing warnings, respectively; zero errors), and 85 existing tests passed, zero failed/skipped.
+
+These are real automated build/test results, but neither workflow starts RimWorld or exercises Unity integration.
+
+## Test scenario coverage (isolated automated tests; verified on GitHub Actions)
 
 - Deduplication of retransmitted commands; conflict on ID reuse.
 - Reject unauthorized faction, unauthorized domain, spoofed session, stale revision and unsupported speed.
