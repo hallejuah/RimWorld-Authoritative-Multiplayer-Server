@@ -32,6 +32,19 @@ The compile-checked RimWorldSingleMapDriver binds a single loaded map to IAuthor
 
 The scheduler is deliberately NOT a substitute for RimWorld's AsyncTimeComp: it supplies when-to-tick decisions, not how to-tick RimWorld gameplay. ClientStateReplica stores DTOs and is not a proof that local gameplay ticks can be disabled without breaking UI.
 
+## Amity-inspired integration plan (prioritized backlog)
+
+The user-provided **Amity 0.3.33** mod was reviewed statically to identify useful *concepts*, not to reuse its proprietary implementation. Our dedicated server **must remain authoritative**; Amity's server implementation was not included in the archive and has not been audited.
+
+The prioritized plan is maintained in **[AMITY_INTEGRATION_ROADMAP.md](AMITY_INTEGRATION_ROADMAP.md)**. It explicitly tracks:
+
+- **P0:** separate full map bootstrap and fast entity deltas; full pawns/Things/containers and stable network IDs; server-owned checkpoint, identity checks, revision/receipts and crash journal.
+- **P1:** verified active-mod and semantic Def admission; safe versioned protocol/chunked reconnect; remote colony/settlement/caravan/camp world objects and controlled remote-map viewing.
+- **P2:** durable trade escrow/commit, scheduled raid lifecycle and inter-colony caravan/transfers with causal time-domain policies.
+- **P3:** chat, presence, operational status and moderation isolated from game simulation.
+
+The v2 bootstrap and map extractor plus file-tree/Def-identity hashing are **partial foundations only**, not completed Amity-equivalent features. No Amity binary or code is included; RimWorld 1.7 binary incompatibility and *All rights reserved* apply.
+
 ## Implementation sequence
 
 A. Verify a real RimWorld/Unity headless bootstrap and safe map tick on one thread (separate process/entrypoint, no reuse of net-only Server.cs as a game host).

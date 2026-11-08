@@ -38,3 +38,8 @@ The original RimWorld map.uniqueID may start at zero; MapDomainIds.FromMapUnique
 ## Live single-map transport note
 
 Only the opt-in single-map bridge is connected to the experimental TCP queue, and it still uses RimWorld's global TickManager. A networked command's ExpectedStateVersion refers to the server's GAME revision from the snapshot, not its independently incrementing NETWORK delta version. MovePawn allows limited latency of at most 180 game-revision steps and revalidates pawn ownership and walkability; other mutations remain exact-revision gated. This is not a full independent-world-time or causality solution.
+
+
+## Planned inter-colony systems inspired by Amity
+
+The separately reviewed Amity client contains trade session/journal and raid lifecycle concepts, but its server behavior is unknown. We plan an **independent authoritative** `CrossDomainTransactionCoordinator` with escrow/prepare/commit/abort, durable receipts and explicit reject rules for paused or differently timed domains, followed by caravan ownership transfers and raid `queued→landed→resolved` transitions. **None is currently implemented.** See [AMITY_INTEGRATION_ROADMAP.md](AMITY_INTEGRATION_ROADMAP.md) for priorities and acceptance gates.
