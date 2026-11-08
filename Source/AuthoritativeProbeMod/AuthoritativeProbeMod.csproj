@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Multiplayer.Authoritative.Probe</RootNamespace>
+    <AssemblyName>MultiplayerAuthoritativeProbe</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AuthoritativeRimWorldBridge/AuthoritativeRimWorldBridge.csproj" />
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4566" />
+    <PackageReference Include="Krafs.Publicizer" Version="2.3.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Publicize Include="Assembly-CSharp" />
+  </ItemGroup>
+  <Target Name="RemoveFramework" BeforeTargets="PrepareForBuild" DependsOnTargets="GetReferenceAssemblyPaths">
+    <PropertyGroup>
+      <TargetFrameworkDirectory></TargetFrameworkDirectory>
+    </PropertyGroup>
+  </Target>
+</Project>
