@@ -25,6 +25,17 @@ public sealed class AuthoritativeProbeMod : Mod
 
     public override void DoSettingsWindowContents(Rect area)
     {
+        // RunFrame can stop after a Verse exception and close the listener
+        // independently of this settings window. Never display a stale port
+        // or copy an obsolete credential after the host has failed.
+        if (host != null && !SingleMapUnityTickLoop.IsActive)
+        {
+            host = null;
+            credential = null;
+            port = 0;
+            error = "The authoritative simulation stopped after a runtime error. Check Player.log before restarting.";
+        }
+
         var y = area.y;
         var width = Math.Min(area.width, 610f);
         Widgets.Label(new Rect(area.x, y, width, 48f),
@@ -35,7 +46,7 @@ public sealed class AuthoritativeProbeMod : Mod
         if (host == null)
         {
             Widgets.Label(new Rect(area.x, y, width, 34f),
-                "Load a vanilla colony, pause time, then start the probe.");
+                "On the colony map SELECT Paused speed before opening settings; a menu's automatic pause does not count.");
             y += 40f;
             if (Widgets.ButtonText(new Rect(area.x, y, 245f, 35f),
                 "Start local authoritative probe"))
@@ -89,7 +100,7 @@ public sealed class AuthoritativeProbeMod : Mod
             Find.TickManager == null || Find.Maps.Count != 1)
             throw new InvalidOperationException("Load a game with exactly one map first");
         if (Find.TickManager.CurTimeSpeed != TimeSpeed.Paused)
-            throw new InvalidOperationException("Pause vanilla time before starting the probe");
+            throw new InvalidOperationException("Select Paused speed on the colony map before opening settings; menu auto-pause does not count");
 
         var faction = Faction.OfPlayer;
         if (faction == null || faction.loadID <= 0)
