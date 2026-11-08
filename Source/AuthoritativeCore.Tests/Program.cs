@@ -31,7 +31,11 @@ var cases = new (string Name, Action Run)[]
     ("Read-only map adapter packs terrain, roofs and fog", WorldBootstrapCaptureTests.Layers),
     ("Map capture is deterministic and ordered across domains", WorldBootstrapCaptureTests.Ordering),
     ("Map capture rejects untrusted IDs, dimensions and palettes", WorldBootstrapCaptureTests.Rejection),
-    ("Map capture rejects invalid manifests before reading map", WorldBootstrapCaptureTests.ManifestAdmission)
+    ("Map capture rejects invalid manifests before reading map", WorldBootstrapCaptureTests.ManifestAdmission),
+    ("Content tree hashes bytes and canonical paths", ContentFingerprintTests.BytesAndOrdering),
+    ("Content tree enforces budget, file changes and symlinks", ContentFingerprintTests.Safety),
+    ("Resolved Def identities hash in stable deterministic order", ContentFingerprintTests.DefIdentities),
+    ("Mod manifest checks loaded order, content and cancellation", ContentFingerprintTests.Manifest)
 };
 
 var failures = 0;
