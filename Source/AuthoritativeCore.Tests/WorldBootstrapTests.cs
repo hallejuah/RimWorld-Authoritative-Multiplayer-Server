@@ -27,7 +27,9 @@ internal static class WorldBootstrapTests
 
     public static void InvalidMap()
     {
-        var sample = Create();
+        // Map validation must fail on the layer itself, not just on a dangling
+        // entity reference created when replacing the map collection.
+        var sample = Create() with { Entities = Array.Empty<EntityPresentation>() };
         var map = sample.Maps[1];
         Bad(sample with { Maps = new[] { map with { Terrain = new byte[3] } } });
         Bad(sample with { Maps = new[] { map with { Terrain = new byte[] { 0, 2, 0, 0 } } } });
