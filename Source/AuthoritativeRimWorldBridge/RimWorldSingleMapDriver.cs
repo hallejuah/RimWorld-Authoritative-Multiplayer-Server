@@ -75,10 +75,26 @@ public sealed class RimWorldSingleMapDriver : IAuthoritativeGameDriver
         // This issues the genuine job to Verse; movement will then be performed
         // by the game's own simulation ticks. No client-side gameplay is run.
         var job = JobMaker.MakeJob(JobDefOf.Goto, destination);
-        pawn.jobs.TryTakeOrderedJob(job);
+        if (!pawn.jobs.TryTakeOrderedJob(job))
+            return Reject("Verse refused the Goto order", out reason);
         revision = checked(revision + 1);
         reason = "Job submitted";
         return true;
+    }
+
+    // A proper future session must persist worldId and derive the manifest
+    // from actual loaded mods/Defs, never synthesize hashes or accept them
+    // from an untrusted client. RimWorld 1.6 PlanetTile conversion is left
+    // explicit; blindly hashing Map.Tile is not a stable global tile ID.
+    public WorldBootstrapV2 CaptureBootstrapV2(
+        Guid worldId, int worldTile, ContentManifest authoritativeManifest,
+        long networkVersion)
+    {
+        EnsureReady();
+        var source = new VerseSingleMapBootstrapSource(map, worldTile);
+        return WorldBootstrapCapture.Capture(
+            worldId, networkVersion, StateVersion,
+            authoritativeManifest, new IWorldBootstrapMapSource[] { source });
     }
 
     // Deliberately small proof-of-concept projection, NOT a RimWorld snapshot
