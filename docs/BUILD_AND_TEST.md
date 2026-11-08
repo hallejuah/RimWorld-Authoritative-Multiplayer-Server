@@ -72,3 +72,16 @@ An additional independently compiled net8/netstandard2.0 transport project provi
 GitHub Actions successfully executed the 7 socket-level tests on Source/AuthoritativeTransport.Tests, including initial handshake, authenticated command queue delivery on the simulation thread, fake-pawn location replication, duplicate retry, reconnect snapshot, wrong-credential/session/faction rejection, state-history expiry and invalid frame limits. The tests use real TCP sockets but a fake game driver, NOT a licensed RimWorld/Unity process. The source compiler also checks the Verse bridge project against RimWorld 1.6 reference assemblies.
 
 For current status see the GitHub Actions run linked from pull request #1. To test against a real loaded game, see docs/GAME_INTEGRATION_PROBE.md.
+
+
+## Optional test mod / CLI (fourth iteration)
+
+```bash
+dotnet build Source/AuthoritativeProbeMod/AuthoritativeProbeMod.csproj -c Release
+dotnet build Source/AuthoritativeProbeClient/AuthoritativeProbeClient.csproj -c Release
+bash scripts/package-authoritative-probe.sh
+```
+
+The packaging command stages a separate experimental mod in out/AuthoritativeProbeMod. It uses an allowlist rather than redistributing protected RimWorld/Unity reference assemblies. This does NOT certify runtime dependency loading, game startup or any in-game multiplayer behavior. Full instructions and limitations: docs/EXPERIMENTAL_PROBE.md.
+
+The opt-in mod settings UI refuses activation if the original Multiplayer mod assembly is loaded, if the game is not in Playing state, if vanilla time is not paused, or if there is not exactly one loaded map.

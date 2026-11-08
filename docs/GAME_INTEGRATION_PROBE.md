@@ -50,4 +50,9 @@ int port = loadedHost.StartLocalTransport(localAuthenticator);
 
 A separate local process can then call LoopbackTransportClient.ConnectAsync(port, credential), consume the initial DTO snapshot, issue PlayerCommand.MovePawn with ExpectedStateVersion = client.Replica.GameStateVersion, and PollAsync to apply deltas. The Unity thread must remain pumping. Run the client asynchronously; never block Unity waiting for command receipts. Stop with SingleMapUnityTickLoop.Stop, which closes the transport.
 
-This remains a manual integration plan and an optional library hook. There is NO built/deployed game mod installer, no shipped production authenticator and no end-to-end game test report. Do not expose or port-forward this cleartext loopback service.
+This remains a manual integration plan and an optional library hook. An optional, separately built dev-only Mod settings entrypoint and allowlist packaging script now exist (see docs/EXPERIMENTAL_PROBE.md), but there is still no production authenticator or end-to-end real game test report. Do not expose or port-forward this cleartext loopback service.
+
+
+## Easier opt-in route prepared (NOT executed)
+
+The separately compiled Source/AuthoritativeProbeMod now exposes Start/Stop actions and random per-run local credential through RimWorld's Mod settings. Source/AuthoritativeProbeClient can request a read-only snapshot or one movement on localhost. No manual C# injected initialization should be required once the staged mod loads correctly. Packaging and runtime dependencies are still subject to actual game validation. See docs/EXPERIMENTAL_PROBE.md for the future test procedure.

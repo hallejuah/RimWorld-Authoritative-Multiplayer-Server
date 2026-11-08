@@ -56,3 +56,10 @@ Obtain a licensed RimWorld 1.6 runtime, establish a game simulation bootstrap on
 - The simulation command gate accepts MovePawn based on a game revision at most 180 steps old. This allows normal ticking in the prototype but does NOT prevent two legitimate move requests arriving out of their original order; per-pawn ordering and causal preconditions are future work.
 - The game driver validates current faction, map, pawn, and walkable destination, but real UI/gameplay side effects remain unaudited.
 - Network-side session admission is only as strong as the caller's ILoopbackAuthenticator. The testing credential is intentionally fake and must never be used outside tests.
+
+
+## Fourth iteration — optional mod launch surface (not game-tested)
+
+Source/AuthoritativeProbeMod is a separately compiled net48 Verse.Mod wrapper with opt-in mod settings controls to attach a one-map authoritative host and start the loopback-only transport. Source/AuthoritativeProbeClient is a standalone net8 read-only pawn DTO / single move CLI. scripts/package-authoritative-probe.sh stages only allowlisted binaries into Experimental/AuthoritativeProbe metadata. The probe blocks use when the original Multiplayer assembly is loaded.
+
+This is source and packaging infrastructure ONLY: no licensed Unity process has loaded this experimental mod in CI or elsewhere in this project. Compatibility of System.Text.Json and transitive dependencies under RimWorld's embedded Unity/Mono remains unverified. See docs/EXPERIMENTAL_PROBE.md.

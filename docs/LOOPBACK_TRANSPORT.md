@@ -46,3 +46,8 @@ Tests open real TCP sockets on 127.0.0.1 and use a fake game driver which only c
 ## Remaining work
 
 TLS with authenticated sessions and account storage, replay/ordering protection across restarts, persistable IDs, map/pawn/job serialization, client game-object presentation, application-level acks, interest management and actual Linux/Windows RimWorld headless integration. Until then, this is a local technical experiment only.
+
+
+## Separate game probe launch surface
+
+The optional Source/AuthoritativeProbeMod wraps the existing LoadedSingleMapHost with an explicit mod-settings UI and random local-only session credential. The Source/AuthoritativeProbeClient CLI prints pawn DTOs and can submit a single movement command, polling deltas until the destination is reached or a short observation window ends. Both compile in CI, and scripts/package-authoritative-probe.sh creates a staging folder. They are not a production launcher and have not been executed under Unity. See docs/EXPERIMENTAL_PROBE.md.

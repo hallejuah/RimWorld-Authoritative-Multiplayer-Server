@@ -51,3 +51,8 @@ Source/AuthoritativeRimWorldBridge builds separately and is not installed by the
 The optional LoadedSingleMapHost.StartLocalTransport opens a loopback-only TCP endpoint after SingleMapUnityTickLoop.Start. Its server workers enqueue commands into AuthoritativeSimulationHost; Unity's Root_Play.Update calls Pump and publishes a fresh snapshot/delta into StatePublicationHub. The only client currently provided is a DTO-only test/reference client. On stopping the Unity host, the local listener closes and pending command receipts are rejected.
 
 This does NOT make the vanilla multiplayer UI a read-only authoritative client and does NOT solve headless Unity startup, full map state, arbitrary modded jobs, real save/reload or independent world/map timelines.
+
+
+## Optional game-facing probe wrapper (fourth iteration)
+
+Source/AuthoritativeProbeMod is now a standalone net48 Verse.Mod using mod-settings buttons for explicit activation and shutdown; it refuses to run alongside the original Multiplayer assembly. A cryptographically random one-run credential is shown only by copying from the settings screen, and the transport binds only to localhost. Source/AuthoritativeProbeClient provides a separate net8 read-only terminal client. scripts/package-authoritative-probe.sh can stage an isolated test mod with an explicit assembly allowlist. This implementation has passed source compilation but **has never been loaded or tested inside licensed RimWorld**. Details: docs/EXPERIMENTAL_PROBE.md.
