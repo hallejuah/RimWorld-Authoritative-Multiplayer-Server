@@ -8,6 +8,7 @@ on:
     paths:
       - 'Source/AuthoritativeCore/**'
       - 'Source/AuthoritativeCore.Tests/**'
+      - 'Source/AuthoritativeEntityGraph.Tests/**'
       - 'Source/AuthoritativeRimWorldBridge/**'
       - 'Source/AuthoritativeTransport/**'
       - 'Source/AuthoritativeTransport.Tests/**'
@@ -43,3 +44,5 @@ jobs:
         run: dotnet run --project Source/AuthoritativeTransport.Tests/AuthoritativeTransport.Tests.csproj -c Release
       - name: Execute focused authoritative tests
         run: dotnet run --project Source/AuthoritativeCore.Tests/AuthoritativeCore.Tests.csproj -c Release
+      - name: Execute containment graph and atomic world-view tests
+        run: dotnet run --project Source/AuthoritativeEntityGraph.Tests/AuthoritativeEntityGraph.Tests.csproj -c Release
