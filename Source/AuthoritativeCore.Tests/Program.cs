@@ -27,7 +27,11 @@ var cases = new (string Name, Action Run)[]
     ("V2 mod manifest rejects reordered and changed mods", WorldBootstrapTests.ManifestMismatch),
     ("V2 client admission is atomic across invalid updates", WorldBootstrapTests.AtomicAdmission),
     ("V2 snapshots are deep copied and digest is canonical", WorldBootstrapTests.DefensiveCopies),
-    ("V2 codec rejects malformed and oversized payloads", WorldBootstrapTests.MalformedPayload)
+    ("V2 codec rejects malformed and oversized payloads", WorldBootstrapTests.MalformedPayload),
+    ("Read-only map adapter packs terrain, roofs and fog", WorldBootstrapCaptureTests.Layers),
+    ("Map capture is deterministic and ordered across domains", WorldBootstrapCaptureTests.Ordering),
+    ("Map capture rejects untrusted IDs, dimensions and palettes", WorldBootstrapCaptureTests.Rejection),
+    ("Map capture rejects invalid manifests before reading map", WorldBootstrapCaptureTests.ManifestAdmission)
 };
 
 var failures = 0;
