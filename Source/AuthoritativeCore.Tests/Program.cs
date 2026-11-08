@@ -15,6 +15,7 @@ var cases = new (string Name, Action Run)[]
     ("Commands run only on their owning simulation thread", CommandThreadAffinity),
     ("Host queues commands and ticks on simulation thread", HostPipeline),
     ("Host rejects command queue overload", HostBackpressure),
+    ("Zero-based RimWorld map IDs are mapped to positive domains", MapDomainMapping),
     ("A failed game tick does not advance its clock", FailedTick)
 };
 
@@ -209,6 +210,14 @@ static void HostPipeline()
     Check(host.CaptureSnapshot().Version == 7, "snapshot driver not called");
     MustThrow<InvalidOperationException>(() =>
         Task.Run(() => host.CaptureSnapshot()).GetAwaiter().GetResult());
+}
+
+static void MapDomainMapping()
+{
+    Check(MapDomainIds.FromMapUniqueId(0) == 1, "Map 0 must be valid");
+    Check(MapDomainIds.FromMapUniqueId(1) == 2, "Map 1 mapping");
+    MustThrow<ArgumentOutOfRangeException>(() => MapDomainIds.FromMapUniqueId(-1));
+    MustThrow<ArgumentOutOfRangeException>(() => MapDomainIds.FromMapUniqueId(int.MaxValue));
 }
 
 static void HostBackpressure()
