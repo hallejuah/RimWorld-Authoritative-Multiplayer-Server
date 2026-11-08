@@ -11,6 +11,10 @@ on:
       - 'Source/AuthoritativeRimWorldBridge/**'
       - 'Source/AuthoritativeTransport/**'
       - 'Source/AuthoritativeTransport.Tests/**'
+      - 'Source/AuthoritativeProbeMod/**'
+      - 'Source/AuthoritativeProbeClient/**'
+      - 'Experimental/AuthoritativeProbe/**'
+      - 'scripts/package-authoritative-probe.sh'
       - '.github/workflows/authoritative-core.yml'
 
 jobs:
@@ -29,6 +33,12 @@ jobs:
         run: dotnet build Source/AuthoritativeRimWorldBridge/AuthoritativeRimWorldBridge.csproj -c Release
       - name: Build local TCP transport for net8 and netstandard2.0
         run: dotnet build Source/AuthoritativeTransport/AuthoritativeTransport.csproj -c Release --warnaserror
+      - name: Build optional RimWorld 1.6 probe mod
+        run: dotnet build Source/AuthoritativeProbeMod/AuthoritativeProbeMod.csproj -c Release
+      - name: Build standalone local probe client
+        run: dotnet build Source/AuthoritativeProbeClient/AuthoritativeProbeClient.csproj -c Release --warnaserror
+      - name: Stage isolated test mod without proprietary game binaries
+        run: bash scripts/package-authoritative-probe.sh "$RUNNER_TEMP/AuthoritativeProbeMod"
       - name: Execute real loopback TCP integration tests
         run: dotnet run --project Source/AuthoritativeTransport.Tests/AuthoritativeTransport.Tests.csproj -c Release
       - name: Execute focused authoritative tests
